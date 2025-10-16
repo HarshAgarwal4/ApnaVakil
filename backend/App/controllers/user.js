@@ -10,8 +10,10 @@ async function saveUser(req, res) {
     if (!name || !email || !password || !otp) {
         return res.send({ status: 7, msg: "Invalid fields" });
     }
+    console.log(otp)
     try {
         let otpResult = verifyOTP(email, otp)
+        console.log(otpResult)
         if (!otpResult) return res.send({ status: 10, msg: "Invalid OTP" });
         else {
             let obj = { name, email, password };

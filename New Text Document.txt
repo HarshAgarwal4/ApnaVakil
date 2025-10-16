@@ -58,3 +58,5 @@ You have to give respone only in following format as json only:
 #VITE_REACT_APP_BACKEND_URL = 'http://localhost:8000'
 VITE_REACT_APP_BACKEND_URL = 'https://www.apnavakil.info:8000'
 VITE_RAZORPAY_KEY_ID = 'rzp_test_RP2IUjjWdWauAh'
+#VITE_REACT_APP_BACKEND_URL = 'https://www.apnavakil.info:8000'
+#VITE_REACT_APP_BACKEND_URL = 'http://localhost:8000'
