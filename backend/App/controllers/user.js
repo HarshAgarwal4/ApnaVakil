@@ -1,6 +1,8 @@
 import { setuser, getUser } from "../../services/auth.js";
 import { comparePassword, hashPassword } from "../../services/encryption.js";
 import { sendOTPEmail, verifyOTP } from "../../services/otp.js";
+import dotenv from 'dotenv'
+dotenv.config()
 import userModel from "../models/user.js";
 
 async function saveUser(req, res) {
@@ -9,7 +11,7 @@ async function saveUser(req, res) {
         return res.send({ status: 7, msg: "Invalid fields" });
     }
     try {
-        let otpResult = verifyOTP(email , otp)
+        let otpResult = verifyOTP(email, otp)
         if (!otpResult) return res.send({ status: 10, msg: "Invalid OTP" });
         else {
             let obj = { name, email, password };
@@ -39,10 +41,11 @@ async function login(req, res) {
         let token = await setuser(findUser)
         findUser.refreshToken = token;
         await findUser.save();
+        console.log(process.env.production === "true")
         res.cookie('UID', token, {
-            httpOnly: false,
-            secure: false,
-            sameSite: 'Lax',
+            httpOnly: process.env.production === "true",
+            secure: process.env.production === "true",
+            sameSite: process.env.production === "true" ? 'none' : 'Lax',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.send({ status: 1, msg: "Login successful" });
@@ -72,12 +75,17 @@ async function logout(req, res) {
         if (!token) return res.send({ status: 1, msg: "Logged out successfully" });
         let user = await getUser(token)
         let u = await userModel.findById(user.id)
-        if(!u) return res.send({ status: 0, msg: "error" });
+        if (!u) return res.send({ status: 0, msg: "error" });
         if (u) {
             u.refreshToken = null
             await u.save()
         }
-        res.clearCookie('UID', { httpOnly: false, secure: false, sameSite: 'Lax' });
+        res.clearCookie('UID', {
+            httpOnly: process.env.production === "true",
+            secure: process.env.production === "true",
+            sameSite: process.env.production === "true" ? 'none' : 'Lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
         req.user = null
         return res.send({ status: 1, msg: "Logged out successfully" });
     } catch (err) {
@@ -91,11 +99,11 @@ async function fgtpwd(req, res) {
     if (!email || !password || !otp) {
         return res.send({ status: 7, msg: "Invalid fields" });
     }
-    try{
-        let otpResult = verifyOTP(email , otp)
+    try {
+        let otpResult = verifyOTP(email, otp)
         if (!otpResult) return res.send({ status: 10, msg: "Invalid OTP" });
         let newPassword = await hashPassword(password)
-        let user = await userModel.findOneAndUpdate({email: email} , 
+        let user = await userModel.findOneAndUpdate({ email: email },
             {
                 $set: { password: newPassword }
             },
@@ -103,9 +111,9 @@ async function fgtpwd(req, res) {
                 new: true
             }
         )
-        if(!user) return res.send({status: 5 , msg: "User not found"})
-        return res.send({status: 1 , msg: "Password changed successfully"})
-    }catch(err){
+        if (!user) return res.send({ status: 5, msg: "User not found" })
+        return res.send({ status: 1, msg: "Password changed successfully" })
+    } catch (err) {
         console.log(err);
         return res.send({ status: 0, msg: "Error in changing password" });
     }
@@ -125,4 +133,4 @@ async function sendOtpToEmail(req, res) {
     }
 }
 
-export { saveUser , login , fetchUser , logout , sendOtpToEmail , fgtpwd };
+export { saveUser, login, fetchUser, logout, sendOtpToEmail, fgtpwd };

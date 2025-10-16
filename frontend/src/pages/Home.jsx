@@ -465,7 +465,7 @@ const Home = () => {
               <ul className="space-y-3">
                 <li><a href="#about" className="text-slate-400 hover:text-blue-400 transition">About Us</a></li>
                 <li><a href="#contact" className="text-slate-400 hover:text-blue-400 transition">Contact</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-blue-400 transition">Careers</a></li>
+                <li><a href="https://merchant.razorpay.com/policy/RP0Nyr12K9mLHn/contact_us" className="text-slate-400 hover:text-blue-400 transition">administrators</a></li>
               </ul>
             </div>
 
@@ -473,9 +473,9 @@ const Home = () => {
             <div>
               <h4 className="font-semibold text-white mb-4 uppercase text-sm tracking-wider">Legal</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="text-slate-400 hover:text-blue-400 transition">Terms of Service</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-blue-400 transition">Privacy Policy</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-blue-400 transition">Disclaimer</a></li>
+                <li><a href="https://merchant.razorpay.com/policy/RP0Nyr12K9mLHn/terms" className="text-slate-400 hover:text-blue-400 transition">Terms of Service</a></li>
+                <li><a href="https://merchant.razorpay.com/policy/RP0Nyr12K9mLHn/privacy" className="text-slate-400 hover:text-blue-400 transition">Privacy Policy</a></li>
+                <li><a href="https://merchant.razorpay.com/policy/RP0Nyr12K9mLHn/refund" className="text-slate-400 hover:text-blue-400 transition">Disclaimer</a></li>
               </ul>
             </div>
           </div>
