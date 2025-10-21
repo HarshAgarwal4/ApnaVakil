@@ -2,17 +2,17 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { AppContext } from "../context/GlobalContext";
 import axios from "../services/axios";
 import { toast } from "react-toastify";
-
 import Sidebar from "../components/Sidebar";
 import Chatbot from "../components/Chatbot";
 import RightSidebar from "../components/RightSidebar";
 import Header from "../components/Header";
 import PricingBox from "../components/payment";
 import { useNavigate } from "react-router-dom";
+import PrintDialog from "../components/print";
 
 const Dashboard = () => {
-    const { user, setUser , showPricingBox, setShowPricingBox  } = useContext(AppContext);
-    const [sidebarOpen, setSidebarOpen] = useState(true);    
+    const { user, setUser, showPricingBox, setShowPricingBox } = useContext(AppContext);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const navigate = useNavigate()
 
     const logout = async () => {
@@ -37,15 +37,16 @@ const Dashboard = () => {
 
     return (
         <div className="h-screen flex font-[Inter] bg-gray-100">
-            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}/>
+            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
             {showPricingBox && <PricingBox />}
-            
+            <PrintDialog />
+
             <div className="flex-1 flex flex-col">
-                <Header user={user} logout={logout}/>
-                
+                <Header user={user} logout={logout} />
+
                 <main className="flex-1 flex overflow-hidden">
                     <Chatbot />
-                    <RightSidebar  />
+                    <RightSidebar />
                 </main>
             </div>
         </div>

@@ -17,6 +17,9 @@ const GlobalContext = ({ children }) => {
     const [plan, setPlan] = useState(null)
     const [isPaid, setIsPaid] = useState(false)
     const [showPricingBox, setShowPricingBox] = useState(false);
+    const [print , setPrint] = useState(null)
+    const [showPrintPage , setShowPrintPage] = useState(false)
+    const [ sidebarOpen, setSidebarOpen ] = useState(true)
 
     useEffect(() => {
         if (activeChat) {
@@ -68,7 +71,7 @@ const GlobalContext = ({ children }) => {
     }, [])
 
     return (
-        <AppContext.Provider value={{ user, setUser, fetchUser, loading, setLoading, chat, setChat, history, setHistory, activeChat, setActiveChat, article, setArticle, lawyer, setLawyer, checkPlan, plan, setPlan, isPaid, setIsPaid, showPricingBox, setShowPricingBox }} >{children} </AppContext.Provider>
+        <AppContext.Provider value={{ user, setUser, fetchUser, loading, setLoading, chat, setChat, history, setHistory, activeChat, setActiveChat, article, setArticle, lawyer, setLawyer, checkPlan, plan, setPlan, isPaid, setIsPaid, showPricingBox, setShowPricingBox,print , setPrint, showPrintPage , setShowPrintPage, sidebarOpen, setSidebarOpen}} >{children} </AppContext.Provider>
     )
 }
 

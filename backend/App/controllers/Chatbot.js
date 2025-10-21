@@ -13,9 +13,12 @@ function removeFileParts(history) {
         ...msg,
         parts: msg.parts
             .filter(part => part.text)
-            .map(part => ({ text: part.text }))
+            .map(part => ({
+                text: typeof part.text === "string" ? part.text : JSON.stringify(part.text)
+            }))
     }));
 }
+
 
 function extractJSON(text) {
     try {
@@ -33,8 +36,8 @@ async function chat(req, res) {
     let { query, history, chatId } = req.body
     if (!query || !history || chatId) {
         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
-    }
-    let url,content;
+        }
+    let url, content;
     try {
         if (req.file) {
             try {
@@ -55,8 +58,8 @@ async function chat(req, res) {
                 createPartFromUri(myfile.uri, myfile.mimeType),
                 query,
             ]);
-        }else{
-            content = query;
+        } else {
+            content = query
         }
         let hFinal = removeFileParts(JSON.parse(history));
         let finalText = ''
@@ -65,11 +68,49 @@ async function chat(req, res) {
             config: {
                 systemInstruction: process.env.systemInstruction,
                 temperature: 0,
-                tools: [{ urlContext: {} }, { googleSearch: {} }],
+                //tools: [{ urlContext: {} }, { googleSearch: {} }],
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        answer: {
+                            type: Type.STRING,
+                            description: 'complete exact response of query in form of markdown text with proper formatting '
+                        },
+                        law: {
+                            type: Type.STRING,
+                            description: 'This field is required every time. it includes relevant law or section information relatd to user query if applicable otherwise return undefined or null',
+                        },
+                        lawyers: {
+                            type: Type.ARRAY,
+                            description: 'This field is required every time. it includes list of 5 lawyers with their name, contact number, speciality if applicable otherwise return undefined or null',
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    name: {
+                                        type: Type.STRING,
+                                        description: 'name of lawyer only'
+                                    },
+                                    speciality: {
+                                        type: Type.STRING,
+                                        description: 'speciality of that lawyer'
+                                    },
+                                    contact: {
+                                        type: Type.STRING,
+                                        description: 'contact of that lawyer'
+                                    }
+                                }
+                            }
+                        },
+                        print: {
+                            type: Type.STRING,
+                            description: "If the response of user query includes any letter , draft , document overview then you have to write it as a proper formatted original legal document so that user can directky print it"
+                        }
+                    }
+                }
             },
             history: hFinal,
         });
-        
         const response1 = await chat.sendMessageStream({
             message: content,
         });
@@ -80,10 +121,13 @@ async function chat(req, res) {
                 finalText += chunk.text
             }
         }
-        let o = extractJSON(finalText)
-        let finalText1 = ''
-        if (o && o.answer) finalText1 = o?.answer
-        else finalText1 = finalText
+
+        let finalText1 = JSON.parse(finalText)
+        console.log(finalText1)
+        // let o = extractJSON(finalText)
+        // let finalText1 = ''
+        // if (o && o.answer) finalText1 = o?.answer
+        // else finalText1 = finalText
 
         let history1
         if (chatId !== 'not') {
@@ -107,17 +151,17 @@ async function chat(req, res) {
         }
         let obj2 = {
             role: 'model',
-            parts: [{ text: finalText1 }]
+            parts: [{ text: finalText }]
         }
         history1.messages.push(ob1);
         history1.messages.push(obj2);
         await history1.save();
-        res.send({ status: 1, reply: finalText, HID: history1._id });
+        res.send({ status: 1, reply: finalText1, HID: history1._id });
     } catch (err) {
-    console.error(err);
-    if (url) await deleteImageByUrl(url)
-    res.send({ status: 0, reply: "Error fetching AI response" });
-}
+        console.error(err.message);
+        if (url) await deleteImageByUrl(url)
+        res.send({ status: 0, reply: "Error fetching AI response" });
+    }
 }
 
 async function fetchHistory(req, res) {
@@ -125,7 +169,7 @@ async function fetchHistory(req, res) {
         const history = await History.find({ userId: req.user.id });
         return res.send({ status: 1, data: history })
     } catch (err) {
-        console.log(err);
+        console.log(err.message);
         return res.send({ status: 0, msg: "Error in fetching history" })
     }
 }
