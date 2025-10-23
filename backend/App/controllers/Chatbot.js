@@ -34,13 +34,20 @@ function extractJSON(text) {
 }
 
 async function chat(req, res) {
+    console.log(req)
+    console.log(req.file)
+    console.log("1")
     let { query, history, chatId } = req.body
+    console.log("2")
     if (!query || !history || chatId) {
         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
         }
     let url, content;
+    console.log("3")
     try {
+        console.log("4")
         if (req.file) {
+            console.log("5")
             console.log(req.file)
             try {
                 url = await uploadFileToCloud(req.file.path);
