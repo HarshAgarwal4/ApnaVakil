@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, createUserContent, createPartFromUri } from "@google/genai";
 import History from "../models/History.js";
 import dotenv from 'dotenv'
+import fs from 'fs'
 import { deleteImageByUrl, uploadFileToCloud } from "../../services/cloudinary.js";
 dotenv.config()
 
@@ -40,6 +41,7 @@ async function chat(req, res) {
     let url, content;
     try {
         if (req.file) {
+            console.log(req.file)
             try {
                 url = await uploadFileToCloud(req.file.path);
             } catch (err) {

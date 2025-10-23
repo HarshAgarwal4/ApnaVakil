@@ -67,6 +67,8 @@ const GlobalContext = ({ children }) => {
     }
 
     useEffect(() => {
+        const isMobile = window.innerWidth < 640; // Tailwind's sm breakpoint
+        setSidebarOpen(!isMobile); // open on desktop, closed on mobile
         fetchUser()
     }, [])
 
