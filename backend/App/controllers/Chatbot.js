@@ -34,7 +34,6 @@ function extractJSON(text) {
 }
 
 async function chat(req, res) {
-    console.log(req)
     console.log(req.file)
     console.log("1")
     let { query, history, chatId } = req.body
