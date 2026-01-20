@@ -40,6 +40,7 @@ async function authAndPayment(req, res, next) {
     if (unrestrictedPaths.includes(req.path)) return next();
 
     // ----- Payment / Subscription check -----
+    if (dbUser.role === 'admin') return next()
     const now = Date.now();
     const expDate = new Date(dbUser.expDate).getTime();
 
