@@ -55,7 +55,7 @@ const GlobalContext = ({ children }) => {
         if (!user) return false;
 
         const paidPlans = ["Basic", "Premium"];
-
+        if (user.role === 'admin') return true
         if (paidPlans.includes(user.plan)) {
             setPlan(user.plan);
             setIsPaid(true);
