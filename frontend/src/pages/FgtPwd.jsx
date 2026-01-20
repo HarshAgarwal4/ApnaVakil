@@ -39,7 +39,6 @@ const ForgotPassword = () => {
                 }
             }
         } catch (err) {
-            console.log(err);
             toast.error("Server error");
         }
     };
@@ -65,7 +64,6 @@ const ForgotPassword = () => {
                 }
             }
         } catch (err) {
-            console.log(err);
             toast.error("Server error");
         }
         setIsSendingOtp(false);
@@ -80,7 +78,7 @@ const ForgotPassword = () => {
             }}
         >
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/70 to-purple-600/70"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-indigo-500/70 to-purple-600/70"></div>
 
             {/* Card */}
             <div className="relative w-[380px] p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl border border-white/20 z-10 text-center">
@@ -156,7 +154,7 @@ const ForgotPassword = () => {
                         type="submit"
                         disabled={!otpSent || isSubmitting}
                         className={`mt-2 py-3 rounded-lg font-semibold text-white transition ${otpSent
-                                ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90"
+                                ? "bg-linear-to-r from-indigo-500 to-purple-600 hover:opacity-90"
                                 : "bg-gray-500 cursor-not-allowed"
                             }`}
                     >

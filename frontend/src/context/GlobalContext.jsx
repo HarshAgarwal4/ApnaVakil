@@ -41,7 +41,6 @@ const GlobalContext = ({ children }) => {
                 }
             }
         } catch (err) {
-            console.log(err)
             toast.error('server error')
         } finally {
             setLoading(false)

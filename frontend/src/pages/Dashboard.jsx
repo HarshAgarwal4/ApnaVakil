@@ -9,10 +9,11 @@ import Header from "../components/Header";
 import PricingBox from "../components/payment";
 import { useNavigate } from "react-router-dom";
 import PrintDialog from "../components/print";
+import Disclaimer from "../components/Disclaimer";
 
 const Dashboard = () => {
-    const { user, setUser, showPricingBox, setShowPricingBox } = useContext(AppContext);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const { user, setUser, showPricingBox, setShowPricingBox,sidebarOpen, setSidebarOpen } = useContext(AppContext);
+    const [disc , showdisc] = useState(false)
     const navigate = useNavigate()
 
     const logout = async () => {
@@ -29,7 +30,6 @@ const Dashboard = () => {
                 }
             }
         } catch (err) {
-            console.log(err);
             toast.error('server error');
             setUser(null);
         }
@@ -37,7 +37,7 @@ const Dashboard = () => {
 
     return (
         <div className="h-screen flex font-[Inter] bg-gray-100">
-            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            {sidebarOpen && <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
             {showPricingBox && <PricingBox />}
             <PrintDialog />
 
@@ -45,7 +45,7 @@ const Dashboard = () => {
                 <Header user={user} logout={logout} />
 
                 <main className="flex-1 flex overflow-hidden">
-                    <Chatbot />
+                    {disc ? <Disclaimer disc={disc} showdisc={showdisc} /> : <Chatbot disc={disc} showdisc={showdisc} />}
                     <RightSidebar />
                 </main>
             </div>

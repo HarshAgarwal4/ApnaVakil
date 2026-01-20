@@ -48,7 +48,6 @@ const SignupForm = () => {
                 }
             }
         } catch (err) {
-            console.log(err)
             toast.error("server error")
         }
     };
@@ -74,7 +73,6 @@ const SignupForm = () => {
                 }
             }
         } catch (err) {
-            console.log(err)
             toast.error("server error")
         }
         setisSendingOtp(false)

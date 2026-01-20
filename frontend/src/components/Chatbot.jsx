@@ -8,8 +8,10 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useNavigate } from "react-router-dom";
+import BotMsg from "./BotMsg";
+import UserMsg from "./UserMsg";
 
-const Chatbot = () => {
+const Chatbot = ({ disc, showdisc }) => {
     const { history, showPrintPage, setShowPrintPage, setPrint, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, setUser, setIsPaid, setPlan } = useContext(AppContext);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -18,7 +20,23 @@ const Chatbot = () => {
     const [listening, setListening] = useState(false);
     const chatEndRef = useRef(null);
     const fileInputRef = useRef(null);
+    const textareaRef = useRef(null);
     const recognitionRef = useRef(null);
+    const [wi, setWi] = useState('desktop');
+
+    useEffect(() => {
+        if (window.innerWidth <= 640) {
+            setWi("mobile");
+        }
+    }, []);
+
+     const handleKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault(); // Prevent new line
+            handleSend();
+        }
+        // If Shift + Enter, allow default behavior (new line)
+    };
 
     const navigate = useNavigate()
 
@@ -90,7 +108,7 @@ const Chatbot = () => {
             const userMessage = { role: "user", parts: [] };
             if (input.trim()) userMessage.parts.push({ text: input });
             if (file) userMessage.parts.push({ text: "", file: filePreview, fileName: file.name, fileType: file.type });
-            
+
             setHistory((prev) => [...prev, userMessage]);
             setInput("");
             setIsTyping(true);
@@ -105,7 +123,6 @@ const Chatbot = () => {
                 const res = await axios.post("/chat", formData, {
                     headers: { "Content-Type": "multipart/form-data" },
                 });
-
                 let botMessage;
 
                 if (res.status === 200) {
@@ -115,7 +132,7 @@ const Chatbot = () => {
                             if (r.law) setArticle(r.law);
                             if (r.lawyers) setLawyer(r.lawyers);
                             if (r.print) setPrint(r.print)
-                            if (r.answer) botMessage = { role: "model", parts: [{ text: r}] };
+                            if (r.answer) botMessage = { role: "model", parts: [{ text: JSON.stringify(r) }] };
                         } else {
                             botMessage = { role: "model", parts: [{ text: res.data.reply }] };
                         }
@@ -145,23 +162,23 @@ const Chatbot = () => {
                         setIsPaid(false)
                         setPlan("free")
                         setShowPricingBox(true)
-                        botMessage = { role: "model", parts: [{ text: "Error in generating response" }] };
+                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
                     }
                     else if (res.data.status === 20) {
                         toast.error("Your subscription is expired");
                         setIsPaid(false)
                         setPlan("free")
                         setShowPricingBox(true)
-                        botMessage = { role: "model", parts: [{ text: "Error in generating response" }] };
+                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
                     }
                     else if (res.data.status === 21) {
                         setIsPaid(false)
                         setPlan("free")
                         toast.error("There was issue in your subscription plan please contact support");
-                        botMessage = { role: "model", parts: [{ text: "Error in generating response" }] };
+                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
                     }
                     else {
-                        botMessage = { role: "model", parts: [{ text: "Error in generating response" }] };
+                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
                     }
                 }
 
@@ -172,7 +189,6 @@ const Chatbot = () => {
                     setActiveChat({ _id: res.data.HID, messages: [userMessage, botMessage] });
                 }
             } catch (err) {
-                console.log(err);
                 toast.error("Server error");
                 setIsTyping(false);
             } finally {
@@ -185,110 +201,15 @@ const Chatbot = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col p-4 md:p-6 h-full w-[50vw]">
-            <div className="flex-1 space-y-6 overflow-y-auto p-1">
-                {history.map((msg, i) => {
-                    let parsedMsg;
-                    if (msg.role === "model") {
-                        parsedMsg = {
-                            ...msg,
-                            parts: msg.parts.map((part, index) => {
-                                if (index === 0 && typeof part.text === "string") {
-                                    try {
-                                        return { ...part, text: JSON.parse(part.text) };
-                                    } catch (err) {
-                                        return part; 
-                                    }
-                                }
-                                return part;
-                            }),
-                        };
-                    } else {
-                        parsedMsg = msg;
-                    }
-
-                    return (
-                        <div
-                            key={i}
-                            className={`flex px-2 overflow-auto ${parsedMsg?.role === "user" ? "justify-end" : "justify-start"
-                                }`}
-                        >
-                            <div className="flex max-w-[85%] items-end gap-2">
-                                {parsedMsg.role === "model" && (
-                                    <img
-                                        src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png"
-                                        alt="Bot Avatar"
-                                        className="w-8 h-8 rounded-full"
-                                    />
-                                )}
-
-                                <div
-                                    className={`px-4 py-3 rounded-2xl break-words ${parsedMsg.role === "user"
-                                            ? "bg-blue-600 text-white rounded-br-none"
-                                            : "bg-gray-200 text-gray-800 rounded-bl-none"
-                                        }`}
-                                >
-                                    <div className="prose prose-lg break-words">
-                                        {parsedMsg.parts.map((p, idx) => (
-                                            <div key={idx} className="mb-3 flex flex-col gap-2">
-                                                {p.text && (
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[remarkGfm]}
-                                                        components={{
-                                                            code({ inline, className, children, ...props }) {
-                                                                const match = /language-(\w+)/.exec(className || "");
-                                                                return !inline && match ? (
-                                                                    <SyntaxHighlighter
-                                                                        style={vscDarkPlus}
-                                                                        language={match[1]}
-                                                                        PreTag="div"
-                                                                        className="rounded-lg shadow-lg my-4 overflow-x-auto"
-                                                                        {...props}
-                                                                    >
-                                                                        {String(children).replace(/\n$/, "")}
-                                                                    </SyntaxHighlighter>
-                                                                ) : (
-                                                                    <code
-                                                                        className="bg-gray-200 text-pink-600 px-1.5 py-0.5 rounded font-mono text-sm"
-                                                                        {...props}
-                                                                    >
-                                                                        {children}
-                                                                    </code>
-                                                                );
-                                                            },
-                                                        }}
-                                                    >
-                                                        {p.text?.answer || p.text}
-                                                    </ReactMarkdown>
-                                                )}
-
-                                                {p.file && (
-                                                    <div className="w-full mt-2">
-                                                        {p.fileType?.startsWith("image/") ? (
-                                                            <img
-                                                                src={p.file}
-                                                                alt={p.fileName}
-                                                                className="w-full max-h-[25vh] object-contain rounded-lg shadow-md"
-                                                            />
-                                                        ) : (
-                                                            <a
-                                                                href={p.file}
-                                                                download={p.fileName}
-                                                                className="block w-full text-center text-blue-600 underline py-2 rounded-lg bg-gray-50 shadow-sm"
-                                                            >
-                                                                📎 {p.fileName}
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+        <div className="flex-1 flex flex-col  h-full">
+            <div className="flex-1 space-y-6 p-4 md:p-6 overflow-y-auto">
+                {history.map((msg, i) =>
+                    msg.role === "user" ? (
+                        <UserMsg key={i} msg={msg} />
+                    ) : (
+                        <BotMsg key={i} msg={msg} />
+                    )
+                )}
 
                 {isTyping && (
                     <div className="flex items-end gap-3">
@@ -324,15 +245,35 @@ const Chatbot = () => {
                 </div>
             )}
 
-            <div>
-                <div className="flex items-center bg-white border-2 border-gray-200 rounded-lg p-2 focus-within:border-blue-500 transition-all duration-300">
-                    <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask me anything about law..." className="w-full px-4 py-2 bg-transparent focus:outline-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} />
+            <div className="px-6">
+                <div className="flex items-center bg-white border-2 border-gray-200 rounded-lg p-2 focus-within:border-blue-500 transition-all duration-300 **max-w-full**">
+                    <textarea
+                        ref={textareaRef}
+                        value={input}
+                        rows={1}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder={wi === 'mobile' ? "press Shift + enter to send" : 'Ask me anything...'}
+                        className="w-full px-4 py-2 bg-transparent focus:outline-none resize-none"
+                        onKeyDown={handleKeyDown}
+                        style={{ minHeight: '48px' }}
+                    />
                     <input type="file" ref={fileInputRef} accept="image/*,application/pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
                     <button className="p-2 text-gray-500 hover:text-blue-600" onClick={() => fileInputRef.current.click()}><PaperclipIcon /></button>
                     <button className={`p-2 ${listening ? "text-red-500" : "text-gray-500"} hover:text-blue-600`} onClick={toggleListening}><MicIcon /></button>
                     <button onClick={handleSend} className="p-2 ml-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300" disabled={(!input.trim() && !file) || isTyping}><SendIcon /></button>
                 </div>
             </div>
+
+            <div className="bg-white border-t-1 mt-1 py-2">
+                <div onClick={() => { showdisc(!disc) }} className="mx-auto max-w-3xl rounded-lg border hover:cursor-pointer border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900 flex items-start gap-2">
+                    <span className="text-yellow-600">⚠️</span>
+                    <p>
+                        <strong>Apna Vakil</strong> provides general legal information only.
+                        This is <strong>not legal advice</strong>. Consult a qualified advocate for legal matters.
+                    </p>
+                </div>
+            </div>
+
         </div>
     );
 };
