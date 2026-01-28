@@ -265,6 +265,7 @@ const Home = () => {
             )}
           </div>
         </section>
+        
 
         {/* --- About Section (Modern Split Layout) --- */}
         <section id="about" className="py-24 bg-slate-50">
