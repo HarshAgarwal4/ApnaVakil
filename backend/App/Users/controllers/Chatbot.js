@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, createUserContent, createPartFromUri } from "@google
 import History from "../models/History.js";
 import dotenv from 'dotenv'
 import fs from 'fs'
-import { deleteImageByUrl, uploadFileToCloud } from "../../services/cloudinary.js";
+import { deleteImageByUrl, uploadFileToCloud } from "../../../services/cloudinary.js";
 dotenv.config()
 
 const ai = new GoogleGenAI({

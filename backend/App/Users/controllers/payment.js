@@ -3,7 +3,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import userModel from "../models/user.js";
 import { paymentModel } from "../models/payment.js";
-import { sendMail } from "../../services/mail.js";
+import { sendMail } from "../../../services/mail.js";
 dotenv.config();
 
 const razorpay = new Razorpay({

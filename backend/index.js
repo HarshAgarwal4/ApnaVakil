@@ -6,11 +6,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cors from 'cors'
 import dotenv from 'dotenv'
-import { userRouter } from './App/Routes/user.js'
-import { chatRouter } from './App/Routes/Chatbot.js';
-import { PaymentRouter } from './App/Routes/payment.js';
+import { userRouter } from './App/Users/Routes/user.js'
+import { chatRouter } from './App/Users/Routes/Chatbot.js';
+import { PaymentRouter } from './App/Users/Routes/payment.js';
 import { authAndPayment } from './middleware/auth1.js';
-import { contactRouter } from './App/Routes/contact.js';
+import { contactRouter } from './App/Users/Routes/contact.js';
 import { isAdmin } from './middleware/admin.js';
 
 dotenv.config()

@@ -1,6 +1,6 @@
-import { setuser, getUser } from "../../services/auth.js";
-import { comparePassword, hashPassword } from "../../services/encryption.js";
-import { sendOTPEmail, verifyOTP } from "../../services/otp.js";
+import { setuser, getUser } from "../../../services/auth.js";
+import { comparePassword, hashPassword } from "../../../services/encryption.js";
+import { sendOTPEmail, verifyOTP } from "../../../services/otp.js";
 import dotenv from 'dotenv'
 dotenv.config()
 import userModel from "../models/user.js";

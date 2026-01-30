@@ -1,4 +1,4 @@
-const adminRoutes= []
+const adminRoutes= ['/getAllUsers' , 'getAllPayments' , '/getContacts']
 
 async function isAdmin(req,res,next) {
     if (adminRoutes.includes(req.path)) {
