@@ -25,23 +25,14 @@ const app = express()
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.ADMIN_URL]
+console.log(allowedOrigins)
 
 app.use(express.json())
 app.use(cookieParser())
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("Not allowed by CORS: " + origin));
-  },
-  credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
+  origin: allowedOrigins,
+  credentials: true
 }));
-
-app.options("*", cors());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
