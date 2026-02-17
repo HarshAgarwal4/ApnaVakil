@@ -29,9 +29,11 @@ console.log(allowedOrigins)
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-
+    console.log(origin)
   if (allowedOrigins.includes(origin)) {
+    console.log("header set")
     res.setHeader("Access-Control-Allow-Origin", origin);
+    console.log("header set again")
   }
 
   res.setHeader("Access-Control-Allow-Credentials", "true");
