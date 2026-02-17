@@ -28,24 +28,25 @@ const allowedOrigins = [process.env.FRONTEND_URL, process.env.ADMIN_URL]
 console.log(allowedOrigins)
 
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
+    const origin = req.headers.origin;
     console.log(origin)
-  if (allowedOrigins.includes(origin)) {
-    console.log("header set")
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    console.log("header set again")
-  }
+    console.log(allowedOrigins.includes(origin))
+    if (allowedOrigins.includes(origin)) {
+        console.log("header set")
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        console.log("header set again")
+    }
 
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Handle preflight here (CRITICAL for Vercel)
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+    // Handle preflight here (CRITICAL for Vercel)
+    if (req.method === "OPTIONS") {
+        return res.status(200).end();
+    }
 
-  next();
+    next();
 });
 app.use(express.json())
 app.use(cookieParser())
@@ -60,14 +61,14 @@ app.get('/', (req, res) => {
     res.send("hello world")
 })
 app.use('/', userRouter);
-app.use('/' , chatRouter);
-app.use('/' , PaymentRouter)
-app.use('/' , contactRouter)
-app.use('/' , adminUserRoutes)
-app.use('/' , adminPaymentsRoutes)
-app.use('/' , adminContactsRoutes)
-app.use('/' , LawyerRouter)
-app.use('/' , draftRoutes)
+app.use('/', chatRouter);
+app.use('/', PaymentRouter)
+app.use('/', contactRouter)
+app.use('/', adminUserRoutes)
+app.use('/', adminPaymentsRoutes)
+app.use('/', adminContactsRoutes)
+app.use('/', LawyerRouter)
+app.use('/', draftRoutes)
 
 mongoose.connect(process.env.DB_URL, {
     dbName: "Vakil"
