@@ -1,4 +1,4 @@
-import { paymentModel } from "../../Users/models/payment";
+import { paymentModel } from "../../Users/models/payment.js";
 
 async function getAllPayments(req,res) {
     try{

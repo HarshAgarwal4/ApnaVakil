@@ -1,7 +1,7 @@
 import express from 'express'
-import { getContacts } from '../controllers/contact'
+import { getContacts } from '../controllers/contact.js'
 const adminContactsRoutes = express.Router()
 
-adminContactsRoutes.get('/getAllContact' , getContacts)
+adminContactsRoutes.post('/getAllContact' , getContacts)
 
-export {getContacts}
+export {adminContactsRoutes}

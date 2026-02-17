@@ -1,7 +1,7 @@
 import express from 'express'
-import { getAllUsers } from '../controllers/user'
+import { getAllUsers } from '../controllers/user.js'
 const adminUserRoutes = express.Router()
 
-adminUserRoutes.get('/getUsers' , getAllUsers)
+adminUserRoutes.post('/getUsers' , getAllUsers)
 
 export {adminUserRoutes}

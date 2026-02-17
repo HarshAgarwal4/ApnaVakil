@@ -19,7 +19,7 @@ const lawyerSchema = new mongoose.Schema({
     },
     images: {
         type: String,
-        default: '/logo.png'
+        default: '/profile.png'
     },
     categories: [
         {
@@ -30,4 +30,6 @@ const lawyerSchema = new mongoose.Schema({
     { timestamps: true }
 )
 
-export {lawyerSchema}
+const lawyerModel = mongoose.model("lawyer" , lawyerSchema);
+
+export default lawyerModel

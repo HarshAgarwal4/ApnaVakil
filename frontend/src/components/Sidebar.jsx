@@ -2,34 +2,22 @@ import React, { useEffect, useState, useContext } from 'react';
 import { MenuIcon, PlusIcon } from './Icons';
 import { toast } from 'react-toastify';
 import axios from '../services/axios';
-import { AppContext } from '../context/GlobalContext';
+import { useStore } from '../zustand/store';
 
 const Sidebar = () => {
-    const { sidebarOpen, setSidebarOpen } = useContext(AppContext);
-    const [History, setHistory1] = useState([]);
-    const { chat, setChat, setActiveChat, setHistory } = useContext(AppContext);
-
-    async function fetchHistory() {
-        try {
-            let res = await axios.get('/fetchHistory');
-            if (res.status === 200 && res.data.status === 1) {
-                const historyData = res.data.data;
-                setHistory1(Array.isArray(historyData) && historyData.length > 0 ? historyData.reverse() : []);
-            }
-        } catch (err) {
-            console.log(err);
-            toast.error('Error in fetching history');
-        }
-    }
+    const { chat, setChat, setActiveChat, setHistory, sidebarOpen, setDraftChatHistory, setSidebarOpen, All_Histories, fetchHistory, YourDrafts, setActiveDraft, DraftMode , setDocument} = useStore()
 
     const clear = () => {
         setActiveChat(null);
         setHistory([]);
     };
 
-    useEffect(() => {
-        fetchHistory();
-    }, []);
+    const clearDraft = () => {
+        console.log("hello")
+        setActiveDraft(null)
+        setDraftChatHistory([])
+        setDocument(null)
+    }
 
     return (
         <aside
@@ -37,8 +25,8 @@ const Sidebar = () => {
                 bg-gray-800 text-gray-200 flex flex-col
                 transition-all duration-300 ease-in-out
                 fixed sm:relative h-full z-50
-                ${sidebarOpen 
-                    ? "w-[60vw] sm:w-[20vw] opacity-100" 
+                ${sidebarOpen
+                    ? "w-[60vw] sm:w-[20vw] opacity-100"
                     : "w-0 sm:w-[20vw] opacity-0 overflow-hidden"
                 }
             `}
@@ -57,33 +45,62 @@ const Sidebar = () => {
             </div>
 
             {/* New Chat */}
-            <div className="p-4">
-                <button
-                    onClick={clear}
-                    className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm sm:text-base"
-                >
-                    <PlusIcon />
-                    <span className={`ml-2 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>New Chat</span>
-                </button>
-            </div>
+            {DraftMode ?
+                (
+                    <div className="p-4">
+                        <button
+                            onClick={clearDraft}
+                            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm sm:text-base"
+                        >
+                            <PlusIcon />
+                            <span className={`ml-2 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>New Draft</span>
+                        </button>
+                    </div>
+                ) :
+                (
+                    <div className="p-4">
+                        <button
+                            onClick={clear}
+                            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm sm:text-base"
+                        >
+                            <PlusIcon />
+                            <span className={`ml-2 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>New Chat</span>
+                        </button>
+                    </div>
+                )}
 
             {/* History */}
             <nav className="flex flex-col px-4 pb-4 space-y-2 overflow-y-auto transition-opacity duration-300">
                 <p className={`px-2 w-full text-xs sm:text-sm font-semibold text-gray-400 uppercase transition-opacity duration-300 ${!sidebarOpen && "opacity-0 text-center"}`}>
-                    History
+                    {DraftMode ? "Drafts" : "History"}
                 </p>
-                {History.map((item, i) => (
-                    <button
-                        onClick={() => setActiveChat(item)}
-                        key={i}
-                        className="flex w-full items-center p-2 text-sm sm:text-base rounded-lg hover:bg-gray-700 transition-all duration-300"
-                    >
-                        <span className="flex-shrink-0">📄</span>
-                        <span className={`ml-3 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>
-                            {item.messages[0].parts[0].text.slice(0, 15) + '...'}
-                        </span>
-                    </button>
-                ))}
+                {DraftMode ? (
+                    YourDrafts.drafts.map((item, i) => (
+                        <button
+                            onClick={() => setActiveDraft(item)}
+                            key={i}
+                            className="flex w-full items-center p-2 text-sm sm:text-base rounded-lg hover:bg-gray-700 transition-all duration-300"
+                        >
+                            <span className="flex-shrink-0">📄</span>
+                            <span className={`ml-3 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>
+                                {item.title ? item.title : item.messages[0].content.slice(0, 15) + '...'}
+                            </span>
+                        </button>
+                    ))
+                ) : (
+                    All_Histories.all_h.map((item, i) => (
+                        <button
+                            onClick={() => setActiveChat(item)}
+                            key={i}
+                            className="flex w-full items-center p-2 text-sm sm:text-base rounded-lg hover:bg-gray-700 transition-all duration-300"
+                        >
+                            <span className="flex-shrink-0">📄</span>
+                            <span className={`ml-3 transition-opacity duration-300 ${!sidebarOpen && "opacity-0"}`}>
+                                {item.title ? item.title : item.messages[0].parts[0].text.slice(0, 15) + '...'}
+                            </span>
+                        </button>
+                    ))
+                )}
             </nav>
         </aside>
     );

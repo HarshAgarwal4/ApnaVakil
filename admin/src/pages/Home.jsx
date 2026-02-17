@@ -4,6 +4,7 @@ import Dashboard from "../components/Dashboard";
 import Users from "../components/Users";
 import Payments from "../components/Payments";
 import Contacts from "../components/Contacts";
+import Lawyer from "../components/Lawyers";
 
 export default function Home() {
     const [active, setActive] = useState("dashboard");
@@ -13,14 +14,11 @@ export default function Home() {
             <Sidebar active={active} setActive={setActive} />
 
             <main className="flex-1 p-10">
-                <h2 className="text-3xl font-semibold text-slate-800 mb-8 capitalize">
-                    {active}
-                </h2>
-
                 {active === "dashboard" && <Dashboard />}
                 {active === "users" && <Users />}
                 {active === "payments" && <Payments />}
                 {active === "contacts" && <Contacts />}
+                {active === "lawyers" && <Lawyer /> }
             </main>
         </div>
     );

@@ -3,10 +3,10 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../services/axios";
 import { toast } from 'react-toastify'
-import { AppContext } from "../context/GlobalContext";
+import { useStore } from "../zustand/store";
 
 const LoginForm = () => {
-  const { fetchUser, user } = useContext(AppContext)
+  const { fetchUser, user } = useStore()
   const navigate = useNavigate()
   const {
     register,

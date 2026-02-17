@@ -3,10 +3,10 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "../services/axios";
 import { toast } from "react-toastify";
-import { AppContext } from "../context/GlobalContext";
+import { useStore } from "../zustand/store";
 
 const SignupForm = () => {
-    const {user} = useContext(AppContext)
+    const {user} = useStore()
     const [otpSent, setOtpSent] = useState(false);
     const [isSendingOtp, setisSendingOtp] = useState(false);
     const navigate = useNavigate()

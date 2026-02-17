@@ -7,22 +7,20 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useNavigate } from "react-router-dom";
-import BotMsg from "./BotMsg";
-import UserMsg from "./UserMsg";
 import { useStore } from "../zustand/store";
+import DraftUserMsg from "./DraftUserMSg";
+import DraftBotMsg from "./DraftBotMsg";
 
-const Chatbot = ({ disc, showdisc }) => {
-    const { history, showPrintPage, setShowPrintPage, setPrint, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, activeDraft, DraftMode, setUser, setIsPaid, setPlan, All_Histories, user } = useStore()
+const Draftbot = ({ disc, showdisc }) => {
+    const { showPrintPage, setShowPrintPage, setPrint, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, setUser, setIsPaid, setPlan, All_Histories, user, activeDraft, DraftMode, YourDrafts , DraftChatHistory , setActiveDraft} = useStore()
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
-    const [file, setFile] = useState(null);
-    const [filePreview, setFilePreview] = useState(null);
     const [listening, setListening] = useState(false);
     const chatEndRef = useRef(null);
-    const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
     const recognitionRef = useRef(null);
     const [wi, setWi] = useState('desktop');
+    const navigate = useNavigate()
 
     useEffect(() => {
         if (window.innerWidth <= 640) {
@@ -33,12 +31,10 @@ const Chatbot = ({ disc, showdisc }) => {
     const handleKeyDown = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault(); // Prevent new line
-            handleSendMessage();
+            handleSendMessage()
         }
         // If Shift + Enter, allow default behavior (new line)
     };
-
-    const navigate = useNavigate()
 
     // Initialize Speech Recognition for English
     useEffect(() => {
@@ -80,62 +76,34 @@ const Chatbot = ({ disc, showdisc }) => {
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [history, isTyping]);
-
-    const handleFileChange = (e) => {
-        const selected = e.target.files[0];
-        if (selected) {
-            setFile(selected);
-            setFilePreview(URL.createObjectURL(selected));
-        }
-    };
-
-    function extractJSON(text) {
-        try {
-            const match = text.match(/\{[\s\S]*\}/);
-            if (match) return JSON.parse(match[0]);
-        } catch (err) {
-            console.error("Invalid JSON:", err);
-        }
-        return null;
-    }
+    }, [DraftChatHistory, isTyping]);
 
     const handleSendMessage = async () => {
         let plan = checkPlan();
         if (plan) {
-            if ((!input.trim() && !file) || isTyping) return;
-            const userMessage = { role: "user", parts: [] };
-            if (input.trim()) userMessage.parts.push({ text: input });
-            if (file) userMessage.parts.push({ text: "", file: filePreview, fileName: file.name, fileType: file.type });
-            history.push(userMessage)
-            // setHistory(a);
+            if ((!input.trim()) || isTyping) return;
+            const userMessage = { role: "user", content: input};
+            DraftChatHistory.push(userMessage)
             setInput("");
             setIsTyping(true);
 
             try {
-                let id = activeChat?._id || "not"
-                const formData = new FormData();
-                formData.append("query", input);
-                formData.append("history", JSON.stringify(history));
-                formData.append("chatId", id);
-                if (file) formData.append("file", file);
+                let id = activeDraft?._id || "not"
+                const data = {
+                    query: input,
+                    history: JSON.stringify(DraftChatHistory),
+                    chatId: id
+                }
 
-                const res = await axios.post("/chat", formData, {
-                    headers: { "Content-Type": "multipart/form-data" },
-                });
+                const res = await axios.post("/DraftChat", data);
                 let botMessage;
 
                 if (res.status === 200) {
                     if (res.data.status === 1) {
                         const r = res.data.reply
-                        if (r) {
-                            if (r.law) setArticle(r.law);
-                            if (r.lawyers) setLawyer(r.lawyers);
-                            if (r.print) setPrint(r.print)
-                            if (r.answer) botMessage = { role: "model", parts: [{ text: JSON.stringify(r) }] };
-                        } else {
-                            botMessage = { role: "model", parts: [{ text: res.data.reply }] };
-                        }
+                        console.log(r)
+                        botMessage = { role: "assistant", content: r}
+                        if (r) setPrint(r)
                         if (id === 'not') {
                             let all_hist = {
                                 _id: res.data.HID,
@@ -143,7 +111,7 @@ const Chatbot = ({ disc, showdisc }) => {
                                 title: res.data.title,
                                 messages: [userMessage, botMessage]
                             }
-                            All_Histories.all_h.unshift(all_hist)
+                           YourDrafts.drafts.unshift(all_hist)
                         }
                     }
                     else if (res.data.status === 15) {
@@ -171,30 +139,30 @@ const Chatbot = ({ disc, showdisc }) => {
                         setIsPaid(false)
                         setPlan("free")
                         setShowPricingBox(true)
-                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
+                        botMessage = { role: "assistant", content: "Error in generating response"};
                     }
                     else if (res.data.status === 20) {
                         toast.error("Your subscription is expired");
                         setIsPaid(false)
                         setPlan("free")
                         setShowPricingBox(true)
-                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
+                        botMessage = { role: "assistant", content: "Error in generating response"};
                     }
                     else if (res.data.status === 21) {
                         setIsPaid(false)
                         setPlan("free")
                         toast.error("There was issue in your subscription plan please contact support");
-                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
+                        botMessage = { role: "assistant", content: "Error in generating response"};
                     }
                     else {
-                        botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
+                        botMessage = { role: "assistant", content: "Error in generating response"};
                     }
                 }
-                history.push(botMessage)
+                DraftChatHistory.push(botMessage)
                 //setHistory(b);
                 setIsTyping(false);
-                if ((activeChat?._id || "not") === "not" && res.data.HID) {
-                    setActiveChat({
+                if ((activeDraft?._id || "not") === "not" && res.data.HID) {
+                    setActiveDraft({
                         _id: res.data.HID,
                         userId: user._id,
                         title: res.data.title,
@@ -204,13 +172,12 @@ const Chatbot = ({ disc, showdisc }) => {
             } catch (err) {
                 console.log(err)
                 toast.error("Server error");
-                let botMessage = { role: "model", parts: [{ text: JSON.stringify({ answer: 'Error in generating response' }) }] };
-                history.push(botMessage)
+                let botMessage = { role: "assistant", content: 'Error in generating response'};
+                DraftChatHistory.push(botMessage)
                 // setHistory(b);
                 setIsTyping(false);
             } finally {
-                setFile(null);
-                setFilePreview(null);
+                //something
             }
         } else {
             setShowPricingBox(true);
@@ -219,13 +186,18 @@ const Chatbot = ({ disc, showdisc }) => {
 
     return (
         <div className="flex-1 relative flex flex-col  h-full">
+            <div className="absolute inset-0 z flex items-center justify-center pointer-events-none select-none">
+                <span className="text-6xl  md:text-7xl font-extrabold text-slate-400/20 tracking-widest">
+                    Drafts Mode
+                </span>
+            </div>
 
             <div className="flex-1 space-y-6 p-4 md:p-6 overflow-y-auto">
-                {history.map((msg, i) =>
+                {DraftChatHistory.map((msg, i) =>
                     msg.role === "user" ? (
-                        <UserMsg key={i} msg={msg} />
+                        <DraftUserMsg key={i} msg={msg} />
                     ) : (
-                        <BotMsg key={i} msg={msg} />
+                        <DraftBotMsg key={i} msg={msg} />
                     )
                 )}
 
@@ -250,38 +222,43 @@ const Chatbot = ({ disc, showdisc }) => {
             </div>
 
 
-            {filePreview && (
-                <div className="h-[10vh] bg-blue-50 rounded-lg">
-                    {file.type.startsWith("image/") ? (
-                        <div className="flex items-center gap-4 p-2 h-[100%]">
-                            <img src={filePreview} alt="preview" className="h-[100%] aspect-square rounded-lg border border-gray-300" />
-                            <p className="text-sm text-gray-700">📎 {file.name} ({Math.round(file.size / 1024)} KB)</p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-gray-700">📎 {file.name} ({Math.round(file.size / 1024)} KB)</p>
-                    )}
-                </div>
-            )}
-
+            
+            {/* Input form */}
             <div className="px-6">
-                <div className="flex items-center bg-white border-2 border-gray-200 rounded-lg p-2 focus-within:border-blue-500 transition-all duration-300 **max-w-full**">
+                <div className="flex items-center bg-white border-2 border-gray-200 rounded-lg p-2 focus-within:border-blue-500 transition-all duration-300 max-w-full">
+
                     <textarea
                         ref={textareaRef}
                         value={input}
                         rows={1}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={wi === 'mobile' ? "press Shift + enter to send" : 'Ask me anything...'}
+                        placeholder={wi === 'mobile' ? "press Shift + enter to send" : "Ask me anything..."}
                         className="w-full px-4 py-2 bg-transparent focus:outline-none resize-none"
                         onKeyDown={handleKeyDown}
-                        style={{ minHeight: '48px' }}
+                        style={{ minHeight: "48px" }}
                     />
-                    <input type="file" ref={fileInputRef} accept="image/*,application/pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
-                    <button className="p-2 text-gray-500 hover:text-blue-600" onClick={() => fileInputRef.current.click()}><PaperclipIcon /></button>
-                    <button className={`p-2 ${listening ? "text-red-500" : "text-gray-500"} hover:text-blue-600`} onClick={toggleListening}><MicIcon /></button>
-                    <button onClick={handleSendMessage} className="p-2 ml-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300" disabled={(!input.trim() && !file) || isTyping}><SendIcon /></button>
+
+                    {/* Mic Button */}
+                    <button
+                        className={`p-2 ${listening ? "text-red-500" : "text-gray-500"} hover:text-blue-600`}
+                        onClick={toggleListening}
+                    >
+                        <MicIcon />
+                    </button>
+
+                    {/* Send Button */}
+                    <button
+                        onClick={handleSendMessage}
+                        className="p-2 ml-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+                        disabled={!input.trim() || isTyping}
+                    >
+                        <SendIcon />
+                    </button>
+
                 </div>
             </div>
 
+            {/* Disclaimer */}
             <div className="bg-white border-t-1 mt-1 py-2">
                 <div onClick={() => { showdisc(!disc) }} className="mx-auto max-w-3xl rounded-lg border hover:cursor-pointer border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900 flex items-start gap-2">
                     <span className="text-yellow-600">⚠️</span>
@@ -295,5 +272,3 @@ const Chatbot = ({ disc, showdisc }) => {
         </div>
     );
 };
-
-export default Chatbot;

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useContext } from 'react';
-import { AppContext } from '../context/GlobalContext';
+import { useStore } from '../zustand/store';
 
 const Article = () => {
-    const {article, setArticle} = useContext(AppContext)
+    const {article, setArticle} = useStore()
     return (
         <div className="bg-gray-50 p-4 h-[20vh] overflow-auto rounded-lg">
             <h3 className="font-semibold text-gray-800 mb-2">📖 Related Section</h3>

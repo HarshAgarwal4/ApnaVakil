@@ -7,9 +7,17 @@ import { useEffect } from 'react'
 export default function App() {
   const user = useStore((state) => state.user)
   const fetchUser = useStore((state) => state.fetchUser)
+  const fetchAllUsers = useStore((state) => state.fetchAllUsers)
+  const fetchPayments = useStore((state) => state.fetchPayments)
+  const fetchContacts = useStore((state) => state.fetchContacts)
+  const fetchLawyers = useStore((state) => state.fetchLawyer)
 
   useEffect(() => {
     fetchUser()
+    fetchAllUsers()
+    fetchContacts()
+    fetchPayments()
+    fetchLawyers()
   }, [])
 
   return (

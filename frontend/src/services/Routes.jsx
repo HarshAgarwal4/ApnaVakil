@@ -5,6 +5,7 @@ import LoginForm from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import ForgotPassword from "../pages/FgtPwd";
 import ProtectedRoute from "./Authentication";
+import LawyersPage from "../pages/Lawyers";
 
 const router = createBrowserRouter([
     {
@@ -26,6 +27,10 @@ const router = createBrowserRouter([
     {
         path: '/forget-password',
         element: <ForgotPassword />
+    },
+    {
+        path: '/lawyers',
+        element: <LawyersPage />
     }
 ])
 

@@ -2,7 +2,7 @@ const menu = ["dashboard", "users", "payments", "contacts","lawyers" ,"admin-app
 
 export default function Sidebar({ active, setActive }) {
     const openApnaVakilAsAdmin = () => {
-        window.open("https://apnavakil.in?mode=admin", "_blank");
+        window.open("https://apnavakil.info", "_blank");
     };
 
     return (

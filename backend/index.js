@@ -12,6 +12,11 @@ import { PaymentRouter } from './App/Users/Routes/payment.js';
 import { authAndPayment } from './middleware/auth1.js';
 import { contactRouter } from './App/Users/Routes/contact.js';
 import { isAdmin } from './middleware/admin.js';
+import { adminUserRoutes } from './App/Admin/Routes/user.js';
+import { adminPaymentsRoutes } from './App/Admin/Routes/payment.js';
+import { adminContactsRoutes } from './App/Admin/Routes/contact.js';
+import LawyerRouter from './App/Admin/Routes/lawyers.js';
+import { draftRoutes } from './App/Users/Routes/Drafts.js';
 
 dotenv.config()
 
@@ -40,6 +45,11 @@ app.use('/', userRouter);
 app.use('/' , chatRouter);
 app.use('/' , PaymentRouter)
 app.use('/' , contactRouter)
+app.use('/' , adminUserRoutes)
+app.use('/' , adminPaymentsRoutes)
+app.use('/' , adminContactsRoutes)
+app.use('/' , LawyerRouter)
+app.use('/' , draftRoutes)
 
 mongoose.connect(process.env.DB_URL, {
     dbName: "Vakil"

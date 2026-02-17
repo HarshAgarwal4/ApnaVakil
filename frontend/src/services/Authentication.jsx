@@ -1,10 +1,10 @@
 import React, { useContext, useEffect } from "react";
-import { AppContext } from "../context/GlobalContext";
 import LoadingPage from "../components/Loading";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "../zustand/store";
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useContext(AppContext);
+  const { user, loading } = useStore()
   const navigate = useNavigate();
 
   useEffect(() => {

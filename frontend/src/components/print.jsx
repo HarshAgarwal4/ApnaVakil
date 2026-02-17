@@ -1,12 +1,12 @@
 import React, { useContext, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AppContext } from "../context/GlobalContext";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import printJS from "print-js";
+import { useStore } from "../zustand/store";
 
 const PrintDialog = () => {
-    const { showPrintPage, setShowPrintPage, print } = useContext(AppContext);
+    const { showPrintPage, setShowPrintPage, print } = useStore()
 
     const handlePrint = () => {
         const content = document.getElementById("printerSystemID").innerHTML;

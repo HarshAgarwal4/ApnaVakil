@@ -2,10 +2,20 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useStore } from "../zustand/store";
 
 const BotMsg = ({ msg }) => {
+  const {setLawyer , setPrint , setArticle} = useStore()
+  const data = JSON.parse(msg.parts[0].text)
+
+  function getData() {
+    setLawyer(data.lawyers)
+    setArticle(data.law)
+    setPrint(data.print)
+  }
+
   return (
-    <div className="flex justify-start px-2 overflow-auto">
+    <div onClick={() => {getData()}} className="flex justify-start px-2 overflow-auto">
       <div className="flex max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[90%] items-end gap-1 sm:gap-2">
         {/* Bot Avatar */}
         <img

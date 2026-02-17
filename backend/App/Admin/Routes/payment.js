@@ -1,7 +1,7 @@
 import express from 'express'
-import { getAllPayments } from '../controllers/payment'
+import { getAllPayments } from '../controllers/payment.js'
 const adminPaymentsRoutes = express.Router()
 
-adminPaymentsRoutes.get('/getAllPayments' , getAllPayments)
+adminPaymentsRoutes.post('/getAllPayments' , getAllPayments)
 
 export {adminPaymentsRoutes}

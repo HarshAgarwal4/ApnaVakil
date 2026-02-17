@@ -3,6 +3,7 @@ import History from "../models/History.js";
 import dotenv from 'dotenv'
 import fs from 'fs'
 import { deleteImageByUrl, uploadFileToCloud } from "../../../services/cloudinary.js";
+import { generateTitle } from "./sarvam.js";
 dotenv.config()
 
 const ai = new GoogleGenAI({
@@ -19,7 +20,6 @@ function removeFileParts(history) {
             }))
     }));
 }
-
 
 function extractJSON(text) {
     try {
@@ -141,8 +141,10 @@ async function chat(req, res) {
         if (chatId !== 'not') {
             history1 = await History.findOne({ _id: chatId })
         }
+        let title
         if (!history1) {
-            history1 = new History({ userId: req.user.id, messages: [] });
+            title = await generateTitle(JSON.stringify(hFinal))
+            history1 = new History({title, userId: req.user.id, messages: [] });
         }
         let ob1 = {
             role: 'user',
@@ -164,9 +166,9 @@ async function chat(req, res) {
         history1.messages.push(ob1);
         history1.messages.push(obj2);
         await history1.save();
-        res.send({ status: 1, reply: finalText1, HID: history1._id });
+        res.send({ status: 1, reply: finalText1, HID: history1._id , title});
     } catch (err) {
-        console.error(err.message);
+        console.error(err);
         if (url) await deleteImageByUrl(url)
         res.send({ status: 0, reply: "Error fetching AI response" });
     }
@@ -174,7 +176,7 @@ async function chat(req, res) {
 
 async function fetchHistory(req, res) {
     try {
-        const history = await History.find({ userId: req.user.id });
+        const history = await History.find({ userId: req.user.id }).sort({createdAt: -1}).limit(10);
         return res.send({ status: 1, data: history })
     } catch (err) {
         console.log(err.message);

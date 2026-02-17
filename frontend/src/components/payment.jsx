@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import axios from "../services/axios";
-import { AppContext } from "../context/GlobalContext";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "../zustand/store";
 
 export default function PricingBox() {
     const {
@@ -13,7 +13,7 @@ export default function PricingBox() {
         setIsPaid,
         plan,
         setPlan,
-    } = useContext(AppContext);
+    } = useStore()
 
     const navigate = useNavigate();
     const [showDashboard, setShowDashboard] = useState(false);

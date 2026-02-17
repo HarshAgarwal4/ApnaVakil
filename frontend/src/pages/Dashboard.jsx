@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { AppContext } from "../context/GlobalContext";
 import axios from "../services/axios";
 import { toast } from "react-toastify";
 import Sidebar from "../components/Sidebar";
@@ -10,10 +9,12 @@ import PricingBox from "../components/payment";
 import { useNavigate } from "react-router-dom";
 import PrintDialog from "../components/print";
 import Disclaimer from "../components/Disclaimer";
+import { useStore } from "../zustand/store";
+import Draftbot from "../components/DraftBot";
 
 const Dashboard = () => {
-    const { user, setUser, showPricingBox, setShowPricingBox,sidebarOpen, setSidebarOpen } = useContext(AppContext);
-    const [disc , showdisc] = useState(false)
+    const { user, setUser, showPricingBox, sidebarOpen, setSidebarOpen, DraftMode } = useStore()
+    const [disc, showdisc] = useState(false)
     const navigate = useNavigate()
 
     const logout = async () => {
@@ -45,7 +46,16 @@ const Dashboard = () => {
                 <Header user={user} logout={logout} />
 
                 <main className="flex-1 flex overflow-hidden">
-                    {disc ? <Disclaimer disc={disc} showdisc={showdisc} /> : <Chatbot disc={disc} showdisc={showdisc} />}
+
+                    {
+                        disc
+                            ? <Disclaimer disc={disc} showdisc={showdisc} />
+                            : DraftMode
+                                ? <Draftbot disc={disc} showdisc={showdisc} />
+                                : <Chatbot disc={disc} showdisc={showdisc} />
+                    }
+
+
                     <RightSidebar />
                 </main>
             </div>
