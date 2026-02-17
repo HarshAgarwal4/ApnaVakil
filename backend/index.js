@@ -30,7 +30,7 @@ console.log(allowedOrigins)
 app.use(express.json())
 app.use(cookieParser())
 app.use(cors({
-  origin: 'https://apnavakil.info',
+  origin: ['https://apnavakil.info' , 'https://admin.apnavakil.info'],
   credentials: true
 }));
 app.use(express.static(path.join(__dirname, "public")));
