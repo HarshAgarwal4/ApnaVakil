@@ -48,7 +48,6 @@ async function login(req, res) {
             httpOnly: process.env.production === "true",
             secure: process.env.production === "true",
             sameSite: process.env.production === "true" ? 'none' : 'Lax',
-            domain: '.apnavakil.info',
             path:'/',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
