@@ -24,32 +24,18 @@ const app = express()
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.ADMIN_URL]
-console.log(allowedOrigins)
 
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    console.log(origin)
-    console.log(allowedOrigins.includes(origin))
-    if (allowedOrigins.includes(origin)) {
-        console.log("header set")
-        res.setHeader("Access-Control-Allow-Origin", origin);
-        console.log("header set again")
-    }
-
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    // Handle preflight here (CRITICAL for Vercel)
-    if (req.method === "OPTIONS") {
-        return res.status(200).end();
-    }
-
-    next();
-});
 app.use(express.json())
 app.use(cookieParser())
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}))
+// DEVELOPMENT
+// app.use(cors({
+//     origin: [process.env.FRONTEND_URL, process.env.ADMIN_URL],
+//     credentials: true
+// }))
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
@@ -61,17 +47,17 @@ app.get('/', (req, res) => {
     res.send("hello world")
 })
 app.use('/', userRouter);
-app.use('/', chatRouter);
-app.use('/', PaymentRouter)
-app.use('/', contactRouter)
-app.use('/', adminUserRoutes)
-app.use('/', adminPaymentsRoutes)
-app.use('/', adminContactsRoutes)
-app.use('/', LawyerRouter)
-app.use('/', draftRoutes)
+app.use('/' , chatRouter);
+app.use('/' , PaymentRouter)
+app.use('/' , contactRouter)
+app.use('/' , adminUserRoutes)
+app.use('/' , adminPaymentsRoutes)
+app.use('/' , adminContactsRoutes)
+app.use('/' , LawyerRouter)
+app.use('/' , draftRoutes)
 
 mongoose.connect(process.env.DB_URL, {
-    dbName: "Vakil"
+    dbName: "Vakil",
 }).then(() => {
     console.log("DB connected");
     app.listen(process.env.PORT, () => {
