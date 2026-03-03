@@ -28,17 +28,19 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.json())
 app.use(cookieParser())
-//PRODUCTION
-// app.use(cors({
-//     origin: process.env.FRONTEND_URL,
-//     credentials: true
-// }))
 
-//DEVELOPMENT
-app.use(cors({
-    origin: [process.env.FRONTEND_URL, process.env.ADMIN_URL],
-    credentials: true
-}))
+if (process.env.production === 'true') {
+    app.use(cors({
+        origin: process.env.FRONTEND_URL,
+        credentials: true
+    }))
+}
+else {
+    app.use(cors({
+        origin: [process.env.FRONTEND_URL, process.env.ADMIN_URL],
+        credentials: true
+    }))
+}
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
@@ -50,15 +52,15 @@ app.get('/', (req, res) => {
     res.send("hello world")
 })
 app.use('/', userRouter);
-app.use('/' , chatRouter);
-app.use('/' , PaymentRouter)
-app.use('/' , contactRouter)
-app.use('/' , adminUserRoutes)
-app.use('/' , adminPaymentsRoutes)
-app.use('/' , adminContactsRoutes)
-app.use('/' , LawyerRouter)
-app.use('/' , draftRoutes)
-app.use('/' , printRoutes)
+app.use('/', chatRouter);
+app.use('/', PaymentRouter)
+app.use('/', contactRouter)
+app.use('/', adminUserRoutes)
+app.use('/', adminPaymentsRoutes)
+app.use('/', adminContactsRoutes)
+app.use('/', LawyerRouter)
+app.use('/', draftRoutes)
+app.use('/', printRoutes)
 
 mongoose.connect(process.env.DB_URL, {
     dbName: "Vakil",
