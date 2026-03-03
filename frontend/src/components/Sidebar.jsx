@@ -13,7 +13,6 @@ const Sidebar = () => {
     };
 
     const clearDraft = () => {
-        console.log("hello")
         setActiveDraft(null)
         setDraftChatHistory([])
         setDocument(null)

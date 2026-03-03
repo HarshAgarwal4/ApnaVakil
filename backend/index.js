@@ -17,6 +17,7 @@ import { adminPaymentsRoutes } from './App/Admin/Routes/payment.js';
 import { adminContactsRoutes } from './App/Admin/Routes/contact.js';
 import LawyerRouter from './App/Admin/Routes/lawyers.js';
 import { draftRoutes } from './App/Users/Routes/Drafts.js';
+import { printRoutes } from './App/Users/Routes/print.js';
 
 dotenv.config()
 
@@ -27,15 +28,17 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.json())
 app.use(cookieParser())
-app.use(cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true
-}))
-// DEVELOPMENT
+//PRODUCTION
 // app.use(cors({
-//     origin: [process.env.FRONTEND_URL, process.env.ADMIN_URL],
+//     origin: process.env.FRONTEND_URL,
 //     credentials: true
 // }))
+
+//DEVELOPMENT
+app.use(cors({
+    origin: [process.env.FRONTEND_URL, process.env.ADMIN_URL],
+    credentials: true
+}))
 app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json({ limit: "100mb" }));
 app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
@@ -55,6 +58,7 @@ app.use('/' , adminPaymentsRoutes)
 app.use('/' , adminContactsRoutes)
 app.use('/' , LawyerRouter)
 app.use('/' , draftRoutes)
+app.use('/' , printRoutes)
 
 mongoose.connect(process.env.DB_URL, {
     dbName: "Vakil",

@@ -13,6 +13,8 @@
     "@tailwindcss/vite": "^4.1.13",
     "axios": "^1.12.2",
     "framer-motion": "^12.23.18",
+    "html2pdf.js": "^0.14.0",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.544.0",
     "print-js": "^1.6.0",
     "react": "^19.1.1",

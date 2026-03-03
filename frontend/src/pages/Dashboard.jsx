@@ -43,7 +43,7 @@ const Dashboard = () => {
             <PrintDialog />
 
             <div className="flex-1 flex flex-col">
-                <Header user={user} logout={logout} />
+                <Header/>
 
                 <main className="flex-1 flex overflow-hidden">
 

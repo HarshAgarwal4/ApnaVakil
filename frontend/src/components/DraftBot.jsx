@@ -8,8 +8,26 @@ import DraftUserMsg from "./DraftUserMSg";
 import DraftBotMsg from "./DraftBotMsg";
 
 const Draftbot = ({ disc, showdisc }) => {
-    const { showPrintPage, setShowPrintPage, setPrint,document, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, setUser, setIsPaid, setPlan, All_Histories, user, activeDraft, DraftMode, YourDrafts, DraftChatHistory, setActiveDraft } = useStore()
+    const { showPrintPage, setShowPrintPage, setPrint, document, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, setUser, setIsPaid, setPlan, All_Histories, user, activeDraft, DraftMode, YourDrafts, DraftChatHistory, setActiveDraft } = useStore()
     const navigate = useNavigate()
+
+    useEffect(() => {
+        if (!document) {
+            setPrint("");
+            return;
+        }
+        try {
+            let joined = JSON.parse(document)
+            if (Array.isArray(joined)) {
+                joined = joined.join("\n");
+                setPrint(joined)
+            } else {
+                setPrint(document)
+            }
+        } catch (err) {
+            console.log(err)
+        }
+    }, [document]);
 
     return (
         <div className="flex-1 relative flex flex-col  h-full">

@@ -315,7 +315,7 @@ async function DraftChat(req, res) {
         let title
         if (!history1) {
             title = await generateTitle(query)
-            history1 = new DraftModel({ title, userId: req.user.id, messages: [] });
+            history1 = new DraftModel({ title, userId: req.user._id, messages: [] });
         }
         let ob1 = {
             role: 'user',
@@ -341,7 +341,7 @@ async function DraftChat(req, res) {
 
 async function fetchDrafts(req, res) {
     try {
-        const drafts = await DraftModel.find({ userId: req.user.id }).sort({ createdAt: -1 }).limit(10)
+        const drafts = await DraftModel.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(10)
         if (!drafts) return res.send({ status: 7, msg: 'No Drafys', drafts: [] })
         return res.send({ status: 1, msg: "Drafts fetched Succesfully", drafts: drafts })
     } catch (err) {

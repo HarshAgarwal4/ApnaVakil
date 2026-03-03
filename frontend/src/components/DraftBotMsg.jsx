@@ -1,10 +1,11 @@
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useStore } from "../zustand/store";
-
-/* ---------------- MARKDOWN COMPONENTS ---------------- */
+import { toast } from "react-toastify";
+import axios from "../services/axios";
 
 const markdownComponents = {
     code({ inline, className, children, ...props }) {
@@ -63,26 +64,36 @@ const markdownComponents = {
 
     a({ children, href }) {
         return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-800 hover:underline break-words">
+            <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-800 hover:underline break-words"
+            >
                 {children}
             </a>
         );
     }
 };
 
-/* ---------------- COMPONENT ---------------- */
-
 const DraftBotMsg = ({ msg }) => {
-
     const {
         activeBlock,
         setActiveBlock,
         clearActiveBlock,
         editMessage,
-        setEditMessage
+        setEditMessage,
+        document,
+        activeDraft,
+        setDocument,
+        DraftChatHistory,
+        setDraftChatHistory,
+        YourDrafts,
+        setYourDrafts,
     } = useStore();
 
-    /* ---------- Parse blocks ---------- */
+    const [loadingIndex, setLoadingIndex] = useState(null);
+
     let blocks = [];
     try {
         const parsed = JSON.parse(msg);
@@ -91,67 +102,110 @@ const DraftBotMsg = ({ msg }) => {
         return null;
     }
 
-    /* ---------- SEND EDIT ---------- */
     const sendEdit = async (index, originalText) => {
-
         if (!editMessage.trim()) return;
 
-        console.log("Block:", index);
-        console.log("Instruction:", editMessage);
+        setLoadingIndex(index);
 
-        // TODO: connect API
-        /*
-        await axios.post("/edit-block", {
-            blockIndex: index,
-            originalText,
-            instruction: editMessage
-        });
-        */
+        let id = activeDraft?._id || "not";
 
-        clearActiveBlock();
+        try {
+            const res = await axios.post("/editDraft", {
+                idx: index,
+                msg: editMessage,
+                document: document,
+                chatId: id,
+                selection: blocks[index]
+            });
+
+            if (res.status === 200) {
+                if (res.data.status === 1) {
+
+                    const parsedCurrentDoc = JSON.parse(document);
+                    parsedCurrentDoc[index] = res.data.resp;
+                    setDocument(JSON.stringify(parsedCurrentDoc));
+
+                    setYourDrafts(prev => ({
+                        ...prev,
+                        drafts: prev.drafts.map(item => {
+
+                            if (item._id !== id) return item;
+
+                            const parsedDocument = JSON.parse(item.document);
+                            parsedDocument[index] = res.data.resp;
+
+                            return {
+                                ...item,
+                                document: JSON.stringify(parsedDocument)
+                            };
+                        })
+                    }));
+
+                } else {
+                    toast.warning("Something went wrong");
+                }
+            }
+        } catch (err) {
+            console.log(err);
+            toast.error("Server error");
+        } finally {
+            setLoadingIndex(null);
+            clearActiveBlock();
+        }
     };
 
     return (
         <div className="flex justify-start px-2 overflow-auto">
             <div className="flex max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[90%] items-end gap-2">
-
                 <div className="px-3 sm:px-4 py-3 rounded-2xl bg-gray-200 text-gray-800 rounded-bl-none w-full">
                     <div className="prose prose-sm sm:prose-base max-w-none">
-
                         <div className="flex flex-col">
-
                             {blocks.map((block, index) => {
-
                                 const isActive = activeBlock === index;
+                                const isLoading = loadingIndex === index;
+                                const isAnyEditing = loadingIndex !== null;
 
                                 return (
                                     <div
                                         key={index}
-                                        onClick={() => setActiveBlock(index)}
+                                        onClick={() => {
+                                            if (!isAnyEditing) {
+                                                setActiveBlock(index);
+                                            }
+                                        }}
                                         className={`px-3 py-3 border-b border-gray-300 transition cursor-pointer
                                         ${isActive
                                                 ? "ring-2 ring-blue-400 bg-blue-50"
                                                 : "bg-white hover:bg-gray-50"
-                                            }`}
+                                            }
+                                        ${isAnyEditing && !isActive ? "pointer-events-none opacity-60" : ""}
+                                        `}
                                     >
-
                                         {/* -------- MARKDOWN BLOCK -------- */}
-                                        <div className="overflow-hidden">
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkGfm]}
-                                                components={markdownComponents}
-                                            >
-                                                {block}
-                                            </ReactMarkdown>
+                                        <div className="overflow-hidden min-h-[60px] relative">
+                                            {isLoading ? (
+                                                <div className="flex flex-col items-center justify-center h-20 gap-2">
+                                                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="text-xs text-gray-500">
+                                                        AI is editing...
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={markdownComponents}
+                                                >
+                                                    {block}
+                                                </ReactMarkdown>
+                                            )}
                                         </div>
 
                                         {/* -------- INLINE EDITOR -------- */}
-                                        {isActive && (
+                                        {isActive && !isLoading && (
                                             <div
                                                 className="mt-3 border-t pt-3 flex flex-col gap-2"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-
                                                 <textarea
                                                     value={editMessage}
                                                     onChange={(e) => setEditMessage(e.target.value)}
@@ -175,16 +229,12 @@ const DraftBotMsg = ({ msg }) => {
                                                         Send
                                                     </button>
                                                 </div>
-
                                             </div>
                                         )}
-
                                     </div>
                                 );
                             })}
-
                         </div>
-
                     </div>
                 </div>
             </div>

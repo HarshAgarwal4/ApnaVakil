@@ -4,6 +4,7 @@ import { sendOTPEmail, verifyOTP } from "../../../services/otp.js";
 import dotenv from 'dotenv'
 dotenv.config()
 import userModel from "../models/user.js";
+import { redis } from "../../../services/redis.js";
 
 async function saveUser(req, res) {
     let { name, email, password, otp } = req.body;
@@ -83,6 +84,7 @@ async function logout(req, res) {
             u.refreshToken = null
             await u.save()
         }
+        await redis.del(`user:${user.id}`)
         res.clearCookie('UID', {
             httpOnly: process.env.production === "true",
             secure: process.env.production === "true",

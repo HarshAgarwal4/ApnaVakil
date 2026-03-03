@@ -60,7 +60,8 @@ export default function PricingBox() {
                     const verifyRes = await axios.post("/verifyPayment", response);
                     if (verifyRes.data.success) {
                         alert("Payment successful!");
-                        setUser((prev) => ({ ...prev, plan: "Basic" }));
+                        let a = {...user,plan:"Basic"}
+                        setUser(a);
                         setShowPricingBox(false);
                         setIsPaid(true);
                         setPlan("Basic");

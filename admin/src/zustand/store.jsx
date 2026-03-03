@@ -44,7 +44,7 @@ export const useStore = create((set) => ({
 
                 toast.success('User fetched successfully')
             }
-        } catch {
+        } catch (err){
             console.log(err)
             toast.error('Server error')
         } finally {

@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import { deleteImageByUrl, uploadFileToCloud } from "../../../services/cloudinary.js";
 import { generateTitle } from "./sarvam.js";
+import { redis } from "../../../services/redis.js";
 dotenv.config()
 
 const ai = new GoogleGenAI({
@@ -40,13 +41,10 @@ async function chat(req, res) {
     console.log("2")
     if (!query || !history || chatId) {
         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
-        }
+    }
     let url, content;
-    console.log("3")
     try {
-        console.log("4")
         if (req.file) {
-            console.log("5")
             console.log(req.file)
             try {
                 url = await uploadFileToCloud(req.file.path);
@@ -139,12 +137,22 @@ async function chat(req, res) {
 
         let history1
         if (chatId !== 'not') {
-            history1 = await History.findOne({ _id: chatId })
+            let redisHistory = await redis.get(`History:${chatId}`)
+            console.log("found in redis", redisHistory)
+            if (redisHistory) {
+                history1 = redisHistory
+            }
+            else {
+                history1 = await History.findOne({ _id: chatId }).lean()
+                await redis.set(`History:${chatId}`, history1)
+                console.log('set in redis')
+            }
+            console.log(history1)
         }
         let title
         if (!history1) {
             title = await generateTitle(JSON.stringify(hFinal))
-            history1 = new History({title, userId: req.user.id, messages: [] });
+            history1 = new History({ title, userId: req.user._id, messages: [] });
         }
         let ob1 = {
             role: 'user',
@@ -165,8 +173,22 @@ async function chat(req, res) {
         }
         history1.messages.push(ob1);
         history1.messages.push(obj2);
-        await history1.save();
-        res.send({ status: 1, reply: finalText1, HID: history1._id , title});
+        if (chatId !== 'not') {
+            let a = await History.findByIdAndUpdate(
+                chatId, 
+                {
+                    $set: history1
+                },
+                {new: true}
+            )
+            console.log('update in db', a)
+            await redis.set(`History:${chatId}` , history1 , {EX:3600})
+            console.log('update in redis', history1)
+        }
+        else {
+            await history1.save();
+        }
+        res.send({ status: 1, reply: finalText1, HID: history1._id, title });
     } catch (err) {
         console.error(err);
         if (url) await deleteImageByUrl(url)
@@ -176,7 +198,7 @@ async function chat(req, res) {
 
 async function fetchHistory(req, res) {
     try {
-        const history = await History.find({ userId: req.user.id }).sort({createdAt: -1}).limit(10);
+        const history = await History.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(10);
         return res.send({ status: 1, data: history })
     } catch (err) {
         console.log(err.message);

@@ -5,6 +5,7 @@ import LoginForm from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import ForgotPassword from "../pages/FgtPwd";
 import ProtectedRoute from "./Authentication";
+import { PaymentProtected } from "./PaidPage";
 import LawyersPage from "../pages/Lawyers";
 
 const router = createBrowserRouter([
@@ -13,7 +14,7 @@ const router = createBrowserRouter([
         element: <Home />
     },
     {
-        path: '/signup' ,
+        path: '/signup',
         element: <SignupForm />
     },
     {
@@ -30,7 +31,12 @@ const router = createBrowserRouter([
     },
     {
         path: '/lawyers',
-        element: <LawyersPage />
+        element: <ProtectedRoute>
+            <PaymentProtected>
+                <LawyersPage />
+            </PaymentProtected>
+
+        </ProtectedRoute>
     }
 ])
 

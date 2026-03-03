@@ -2,6 +2,7 @@ import { SarvamAIClient } from "sarvamai";
 import dotenv from 'dotenv'
 import { DraftModel } from "../models/Drafts.js";
 import { generateTitle } from './sarvam.js'
+import { redis } from "../../../services/redis.js";
 
 dotenv.config()
 
@@ -264,21 +265,70 @@ AND NOTHING ELSE.
 `
 const documentPrompt = `You have to edit the given document on the basis of user query only`
 
-const selectionPrompt = `You have to edit the selected part only by enhaning it on the basis of given document and user query`
+const selectionPrompt = `
+You are a strict document editing engine.
 
-const processDoc = `
-You are a document segmentation engine.
+Your task:
+Modify ONLY the provided selected section according to the user's query. Do not return full document just edit the selected portion on the basis of user query.
+
+CRITICAL RULES (MANDATORY):
+
+1. Edit ONLY the selected section.
+2. You may expand, reduce, rephrase, restructure, or improve the selected section ONLY if required by the user's query.
+3. Do NOT include any part of the original document outside the selected section.
+4. Do NOT return the full document.
+5. Do NOT include explanations.
+6. Do NOT include notes.
+7. Do NOT include headings unless the user explicitly asks.
+8. Do NOT include phrases like:
+   - "Here is"
+   - "Updated section"
+   - "For reference"
+   - Any commentary text
+9. Do NOT return JSON.
+10. Do NOT wrap the response in quotes.
+11. Do NOT include the " character anywhere.
+12. The response must contain ONLY the updated selected section.
+14. The last character must be the last character of the updated content.
+15. Strictly follow the user's query and modify content accordingly.
+16. Dont return full document
+
+
+If any rule is violated, the response is invalid.
+
+Return plain text only.
+`;
+
+const processDoc = `You are a document segmentation engine.
 
 Your task is to analyze the provided document and return ONLY a single JSON ARRAY.
 
+Definition of a logical section (STRICT):
+A logical section is a continuous block of text that discusses ONE coherent idea, topic, clause, or sub-topic.
+Create a new section ONLY when the subject meaningfully changes.
+
+Start a new section when ANY of the following occurs:
+- A new topic, argument, clause, or heading begins
+- A numbered or bullet clause changes point
+- A paragraph introduces a different concept, rule, definition, party, condition, or step
+- A heading, title, or label appears
+- A question changes to an answer or explanation
+- A list item represents a different requirement
+
+DO NOT split when:
+- The paragraph only continues the same idea
+- Sentences are elaborating or giving examples of the same concept
+- Formatting changes but topic remains the same
+
 Rules (STRICT):
-1. Split the given document into logical, sequential sections.
-2. Each array element MUST be a plain string representing one continuous section of the document.
-3. Preserve the original wording, order, and content exactly. Do NOT rewrite, summarize, or explain.
-4. Do NOT add headings, labels, numbering, or commentary unless they already exist in the document.
-5. Do NOT include any text outside the array.
-6. Do NOT return objects, key-value pairs, or nested arrays.
-7. Ensure the output is valid, parsable JSON.
+1. Split the document into semantic sections based on meaning, NOT line breaks or length.
+2. Each array element MUST be a plain string representing one continuous section.
+3. Preserve original wording, spacing, punctuation, and order exactly.
+4. NEVER rewrite, summarize, translate, or explain text.
+5. DO NOT add headings, numbering, labels, or commentary.
+6. DO NOT return objects or nested arrays.
+7. Output must be valid JSON parsable by JSON.parse().
+8. Do not include any text outside the JSON array.
 
 Output format (MANDATORY):
 [
@@ -286,8 +336,7 @@ Output format (MANDATORY):
   "<section 2>",
   "<section 3>"
 ]
-`;
-
+`
 async function split(msg) {
     try {
         const res = await client.chat.completions({
@@ -383,7 +432,7 @@ async function processDocument(msg) {
 //         let title
 //         if (!history1) {
 //             title = await generateTitle(query)
-//             history1 = new DraftModel({ title, userId: req.user.id, messages: [] });
+//             history1 = new DraftModel({ title, userId: req.user._id, messages: [] });
 //         }
 //         let ob1 = {
 //             role: 'user',
@@ -407,9 +456,70 @@ async function processDocument(msg) {
 //     }
 // }
 
+async function selectionEdit(req, res) {
+    let { document, selection, msg, chatId, idx } = req.body
+    if (selection.trim() === '') {
+        selection = "JUST A EMPTY BLOCK"
+    }
+    if (!document || !chatId || !msg || !selection || !JSON.stringify(idx)) {
+        return res.send({ status: 7, msg: "Invalid Input fields" })
+    }
+    try {
+        let content = selectionPrompt + '\nThe Selected Part is :-\n' + selection + 'The Document for reference is :-\n' + JSON.stringify(document) + 'The User query is :- \n' + msg
+        const resp = await client.chat.completions({
+            messages: [
+                {
+                    role: 'user',
+                    content: content
+                }
+            ],
+            max_tokens: 10000
+        })
+        const r = resp.choices[0].message.content.trim()
+        console.log(r)
+        let history1
+        if (chatId !== 'not') {
+            let redisDraft = await redis.get(`Draft:${chatId}`) || null
+            if (redisDraft) {
+                history1 = redisDraft
+                console.log('found in redis')
+            }
+            else {
+                history1 = await DraftModel.findOne({ _id: chatId }).lean()
+                if (history1) {
+                    await redis.set(`Draft:${chatId}`, history1)
+                }
+                console.log('set in redis')
+            }
+        }
+        let a = JSON.parse(history1.document)
+        if (!history1) return res.send({ status: 8, msg: "History not found" })
+        a[idx] = r
+        history1.document = JSON.stringify(a)
+        if (chatId !== 'not') {
+            await DraftModel.updateOne(
+                { _id: chatId },
+                {
+                    $set: {document: JSON.stringify(a)}
+                }
+            )
+            console.log('updated')
+            await redis.set(`Draft:${chatId}`, history1)
+        }
+        else {
+            await history1.save();
+        }
+        return res.send({ status: 1, msg: "edited", resp: r })
+    }
+    catch (err) {
+        console.log(err)
+        return res.send({ status: 0, msg: "Internal server error" })
+    }
+}
+
 async function DraftChat(req, res) {
     let { query, history, chatId, document1, mode } = req.body
-    if (!query || !history || chatId || !mode) {
+    if (!query || !history || !chatId || !mode) {
         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
     }
     try {
@@ -418,7 +528,7 @@ async function DraftChat(req, res) {
         if (mode === 'document' && document1) {
             history[history.length - 1].content += `\nThe Document is :-\n${document1}`
         }
-        history = [history[0] , history[history.length-1]]
+        history = [history[0], history[history.length - 1]]
         let response
         let document = null
         let draft
@@ -445,12 +555,24 @@ async function DraftChat(req, res) {
 
         let history1
         if (chatId !== 'not') {
-            history1 = await DraftModel.findOne({ _id: chatId })
+            let redisDraft = await redis.get(`Draft:${chatId}`) || null
+            if (redisDraft) {
+                history1 = redisDraft
+                console.log('found in redis')
+            }
+            else {
+                history1 = await DraftModel.findOne({ _id: chatId }).lean()
+                if (history1) {
+                    await redis.set(`Draft:${chatId}`, history1 , {EX: 3600})
+                }
+                console.log('set in redis')
+            }
         }
+        console.log(history1)
         let title
         if (!history1) {
             title = await generateTitle(query)
-            history1 = new DraftModel({ title, userId: req.user.id, messages: [] });
+            history1 = new DraftModel({ title, userId: req.user._id, messages: [] });
         }
         let ob1 = {
             role: 'user',
@@ -466,7 +588,19 @@ async function DraftChat(req, res) {
             history1.document = JSON.stringify(document)
             document = JSON.stringify(document)
         }
-        await history1.save();
+        if (chatId !== 'not') {
+            await DraftModel.findByIdAndUpdate(
+                chatId ,
+                {
+                    $set: history1
+                }
+            )
+            await redis.set(`Draft:${chatId}`, history1 , {EX: 3600})
+            console.log('updated')
+        }
+        else {
+            await history1.save();
+        }
         res.send({ status: 1, reply: response, HID: history1._id, title, document });
     } catch (err) {
         console.error('the error is', err);
@@ -474,4 +608,4 @@ async function DraftChat(req, res) {
     }
 }
 
-export { DraftChat }
+export { DraftChat, selectionEdit }

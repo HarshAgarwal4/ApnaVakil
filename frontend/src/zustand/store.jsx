@@ -29,6 +29,11 @@ export const useStore = create((set, get) => ({
     drafts: []
   },
   document: null,
+  isBlockEditing: false,
+  Lawyers:{
+    isloading: true,
+    lawyers: []
+  },
 
   /* ===================== SETTERS ===================== */
   setUser: (user) => set({ user }),
@@ -61,15 +66,22 @@ export const useStore = create((set, get) => ({
   setDocument: (document) => set({ document }),
   setMode: (mode) => set({ mode }),
   activeBlock: null,                // which block is opened
-    setActiveBlock: (index) => set({ activeBlock: index }),
+  setActiveBlock: (index) => set({ activeBlock: index }),
+  setYourDrafts: (updater) =>
+    set((state) => ({
+      YourDrafts:
+        typeof updater === "function"
+          ? updater(state.YourDrafts)
+          : updater
+    })),
+  setIsBlockEditing: (value) => set({ isBlockEditing: value }),
+  clearActiveBlock: () => set({
+    activeBlock: null,
+    editMessage: ""
+  }),
 
-    clearActiveBlock: () => set({
-        activeBlock: null,
-        editMessage: ""
-    }),
-
-    editMessage: "",                  // instruction user types
-    setEditMessage: (msg) => set({ editMessage: msg }),
+  editMessage: "",                  // instruction user types
+  setEditMessage: (msg) => set({ editMessage: msg }),
 
   /* ===================== ACTIONS ===================== */
   fetchUser: async () => {
@@ -91,6 +103,25 @@ export const useStore = create((set, get) => ({
       toast.error("server error")
     } finally {
       set({ loading: false })
+    }
+  },
+
+  logout: async () => {
+    try {
+      let res = await axios.post('/logout');
+      if (res.status === 200) {
+        if (res.data.status === 0) {
+          set({ user: null })
+          return toast.error("something went wrong");
+        }
+        if (res.data.status === 1) {
+          toast.success("Logged out successfully");
+          set({ user: null })
+        }
+      }
+    } catch (err) {
+      toast.error('server error');
+      set({ user: null })
     }
   },
 
@@ -133,7 +164,29 @@ export const useStore = create((set, get) => ({
       toast.error('Error in fetching Drafts');
     } finally {
       set((state) => ({
-        YourDrafts: { ...state.YourDrafts, isloading: true }
+        YourDrafts: { ...state.YourDrafts, isloading: false }
+      }))
+    }
+  },
+
+  fetchLawyers: async () => {
+     set((state) => ({
+      Lawyers: { ...state.Lawyers, isloading: true }
+    }))
+    try {
+      let res = await axios.post('/fetchLawyer');
+      if (res.status === 200 && res.data.status === 1) {
+        const historyData = res.data.lawyers;
+        set((state) => ({
+          Lawyers: { ...state.Lawyers, lawyers: historyData }
+        }))
+      }
+    } catch (err) {
+      console.log(err);
+      toast.error('Error in fetching Drafts');
+    } finally {
+      set((state) => ({
+        Lawyers: { ...state.Lawyers, isloading: false }
       }))
     }
   },

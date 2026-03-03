@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^1.20.0",
+    "@upstash/redis": "^1.36.3",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
@@ -27,7 +28,7 @@
     "nodemailer": "^7.0.6",
     "nodemon": "^3.1.10",
     "razorpay": "^2.9.6",
-    "redis": "^5.8.3",
+    "redis": "^5.11.0",
     "sarvamai": "^1.1.1",
     "socket.io": "^4.8.1"
   }

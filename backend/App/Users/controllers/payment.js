@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import userModel from "../models/user.js";
 import { paymentModel } from "../models/payment.js";
 import { sendMail } from "../../../services/mail.js";
+import { redis } from "../../../services/redis.js";
 dotenv.config();
 
 const razorpay = new Razorpay({
@@ -39,7 +40,9 @@ async function verifyPayment(req, res) {
 
         if (expectedSignature === razorpay_signature) {
             try {
-                let user = await userModel.findOneAndUpdate({ _id: req.user.id }, { plan: 'Basic', expDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, { new: true });
+                let user = await userModel.findOneAndUpdate({ _id: req.user._id }, { plan: 'Basic', expDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, { new: true });
+                await redis.del(`user:${req.user._id}`)
+                console.log('detleed from redis')
                 const subscriptionEmail = (name, orderId, paymentId, startDate, expiryDate, loginUrl) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -184,7 +187,7 @@ async function verifyPayment(req, res) {
 }
 
 async function savePayment(req, res) {
-    let userId = req.user.id;
+    let userId = req.user._id;
     let email = req.user.email;
     let { plan, amount, paymentId, orderId, signature } = req.body;
     let expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
@@ -199,8 +202,7 @@ async function savePayment(req, res) {
 }
 
 async function getPayments(req, res) {
-    let userId = req.user.id;
-    console.log("hello")
+    let userId = req.user._id;
     try {
         let payments = await paymentModel.find({ userId });
         console.log(payments);

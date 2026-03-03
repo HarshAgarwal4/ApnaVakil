@@ -6,15 +6,19 @@ import { useStore } from "./zustand/store"
 import { useEffect } from "react"
 
 function App() {
-  const {initApp, user , fetchHistory , fetchDrafts} = useStore()
+  const {initApp, user , fetchHistory , fetchDrafts ,checkPlan , fetchLawyers} = useStore()
 
   useEffect(() => {
     initApp()
   } ,[])
 
+
   useEffect(() => {
     fetchHistory()
     fetchDrafts()
+    if (checkPlan()) {
+      fetchLawyers()
+    }
   },[user])
 
   return (

@@ -1,11 +1,12 @@
 import { getUser } from "../services/auth.js";
 import userModel from "../App/Users/models/user.js"
+import { redis } from "../services/redis.js";
 
 // Define public & unrestricted paths
-const publicPaths = ['/', '/register', '/fgtpwd', '/sendotp', '/login' , '/logout' , '/contact'];
+const publicPaths = ['/', '/register', '/fgtpwd', '/sendotp', '/login', '/logout', '/contact'];
 const unrestrictedPaths = [
   '/payment', '/verifyPayment', '/me', '/logout',
-  '/fetchHistory', '/getPayments', '/savePayment'
+  '/fetchHistory', '/getPayments', '/savePayment', '/fetchDrafts', '/format'
 ];
 
 async function authAndPayment(req, res, next) {
@@ -20,7 +21,17 @@ async function authAndPayment(req, res, next) {
     if (!user)
       return res.send({ status: 16, msg: "Invalid or expired token" });
 
-    const dbUser = await userModel.findById(user.id);
+    let redisUsers = await redis.get(`user:${user.id}`) || null
+    let dbUser = null;
+
+    if (redisUsers) {
+      dbUser = redisUsers
+    } else {
+      dbUser = await userModel.findById(user.id).lean();
+      if (dbUser) {
+        let n = await redis.set(`user:${user.id}`, dbUser);
+      }
+    }
     if (!dbUser)
       return res.send({ status: 17, msg: "User not found in database" });
 
@@ -41,11 +52,17 @@ async function authAndPayment(req, res, next) {
     if (!expDate || dbUser.plan === 'free')
       return res.send({ status: 19, msg: "No active subscription found" });
 
-    if (now > expDate){
-        dbUser.plan = 'free'
-        dbUser.expDate = null
-        await dbUser.save()
-        return res.send({ status: 20, msg: "Subscription expired. Please renew to continue." });
+    if (now > expDate) {
+      dbUser.plan = 'free'
+      dbUser.expDate = null
+      let a = await userModel.findByIdAndUpdate(dbUser._id,
+        {
+          $set: dbUser
+        },
+        {new: true}
+      )
+      await redis.set(`user:${user.id}`, dbUser);
+      return res.send({ status: 20, msg: "Subscription expired. Please renew to continue." });
     }
 
     if (dbUser.plan === 'Basic' || dbUser.plan === 'Premium')
