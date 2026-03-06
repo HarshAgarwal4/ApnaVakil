@@ -44,12 +44,12 @@ async function login(req, res) {
         let token = await setuser(findUser)
         findUser.refreshToken = token;
         await findUser.save();
-        console.log(process.env.production === "true")
+        await redis.set(`user:${findUser._id}`, JSON.stringify(findUser))
         res.cookie('UID', token, {
             httpOnly: process.env.production === "true",
             secure: process.env.production === "true",
             sameSite: process.env.production === "true" ? 'none' : 'Lax',
-            path:'/',
+            path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.send({ status: 1, msg: "Login successful" });
@@ -63,13 +63,10 @@ async function fetchUser(req, res) {
     const token = req.cookies?.UID
     if (!token) return res.send({ status: 0, msg: "Not authenticated" });
     try {
-        const payload1 = await getUser(token)
-        const payload = await userModel.findById(payload1.id)
-        console.log("Payload is", payload)
-        if (!payload) return res.send({ status: 0, msg: "Not Authenticated" })
-        res.send({ status: 1, data: payload })
-    } catch (err) {
-        res.send({ status: 2, msg: "Invalid Token" })
+        if (req.user) return res.send({ status: 1, data: req.user })
+    }
+    catch (err) {
+        return res.send({ status: 0 })
     }
 }
 
@@ -84,7 +81,8 @@ async function logout(req, res) {
             u.refreshToken = null
             await u.save()
         }
-        await redis.del(`user:${user.id}`)
+        let a = await redis.del(`user:${user.id}`)
+        console.log(a)
         res.clearCookie('UID', {
             httpOnly: process.env.production === "true",
             secure: process.env.production === "true",
