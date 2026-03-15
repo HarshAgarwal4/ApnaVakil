@@ -28,6 +28,7 @@ async function FormatDocument(req, res) {
     try {
         let content1 = content + '\nThe Document is :-\n'+ document
         const res1 = await client.chat.completions({
+            model: 'sarvam-m',
             messages: [
                 {
                     role: 'user',
@@ -36,7 +37,7 @@ async function FormatDocument(req, res) {
             ],
             max_tokens: 24000
         })
-        const r = res1.choices[0].message.content.trim()
+        const r = res1.choices[0].message.content.trim().split('<think>')[1].trim()
         return res.send({status:1 ,msg:"Done" , document: r})
     }
     catch(err){

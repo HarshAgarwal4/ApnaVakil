@@ -1,14 +1,10 @@
-import { SarvamAIClient } from "sarvamai";
 import dotenv from 'dotenv'
 import { DraftModel } from "../models/Drafts.js";
 import { generateTitle } from './sarvam.js'
 import { redis } from "../../../services/redis.js";
+import { runAI } from "../../../services/aiClient.js";
 
 dotenv.config()
-
-const client = new SarvamAIClient({
-    apiSubscriptionKey: process.env.SARVAM_API_KEY
-});
 
 const splitDocument = `
 You are a response-splitting engine.
@@ -337,28 +333,23 @@ Output format (MANDATORY):
   "<section 3>"
 ]
 `
+
 async function split(msg) {
     try {
-        const res = await client.chat.completions({
-            messages: [
-                {
-                    role: 'system',
-                    content: splitDocument
-                },
-                {
-                    role: 'user',
-                    content: msg
-                }
-            ],
-            max_tokens: 24000
-        })
-        const r = res.choices[0].message.content.trim()
+
+        const r = await runAI(splitDocument, msg, 24000)
+
         console.log(r)
-        let a = JSON.parse(r)
+
+        let a = JSON.parse(r.split('```json')[1].split('```')[0].trim())
+
         return a
+
     }
     catch (err) {
+
         console.log(err)
+
         return {
             msg: "Sorry due to some reasons , we are unable to process request",
             document: null
@@ -367,245 +358,277 @@ async function split(msg) {
 }
 
 async function processDocument(msg) {
+
     try {
-        const res = await client.chat.completions({
-            messages: [
-                {
-                    role: 'system',
-                    content: processDoc
-                },
-                {
-                    role: 'user',
-                    content: msg
-                }
-            ],
-            max_tokens: 24000
-        })
-        const r = res.choices[0].message.content.trim()
+
+        const r = await runAI(processDoc, msg, 24000)
+
         console.log(r)
-        let a = JSON.parse(r)
+        
+        let a = extractJSON(r)
+        
+        console.log(a)
         return a
+
     }
     catch (err) {
+
         console.log(err)
+
         return [msg]
+
     }
+
 }
 
-// async function DraftChat(req, res) {
-//     let { query, history, chatId, document1, mode, select } = req.body
-//     if (!query || !history || chatId || !mode) {
-//         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
-//     }
-//     try {
-//         history = JSON.parse(history)
-//         if (mode == 'normal') {
-//             history.unshift({ role: 'system', content: systemPrompt })
-//         }
-//         if (mode === 'document' && document1) {
-//             history.unshift({ role: 'system', content: documentPrompt })
-//             history[history.length - 1].content += `\nThe Document is :-\n${document1}`
-//         }
-//         let response
-//         let document = null
-//         let draft
-//         const resp = await client.chat.completions({
-//             messages: history,
-//             max_tokens: 24000
-//         })
-
-//         const r = resp.choices[0].message.content.trim()
-//         console.log(r)
-
-//         let a = await split(r)
-//         if (typeof (a) === 'object') {
-//             response = a.msg
-//             if (!(a.document === null || a.document === 'null')) {
-//                 document = await processDocument(a.document)
-//             }
-//         }
-
-//         let history1
-//         if (chatId !== 'not') {
-//             history1 = await DraftModel.findOne({ _id: chatId })
-//         }
-//         let title
-//         if (!history1) {
-//             title = await generateTitle(query)
-//             history1 = new DraftModel({ title, userId: req.user._id, messages: [] });
-//         }
-//         let ob1 = {
-//             role: 'user',
-//             content: query
-//         }
-//         let obj2 = {
-//             role: 'assistant',
-//             content: response
-//         }
-//         history1.messages.push(ob1);
-//         history1.messages.push(obj2);
-//         if (document) {
-//             history1.document = JSON.stringify(document)
-//             document = JSON.stringify(document)
-//         }
-//         await history1.save();
-//         res.send({ status: 1, reply: response, HID: history1._id, title, document });
-//     } catch (err) {
-//         console.error('the error is', err);
-//         res.send({ status: 0, reply: "Error fetching AI response" });
-//     }
-// }
-
 async function selectionEdit(req, res) {
+
     let { document, selection, msg, chatId, idx } = req.body
+
     if (selection.trim() === '') {
         selection = "JUST A EMPTY BLOCK"
     }
+
     if (!document || !chatId || !msg || !selection || !JSON.stringify(idx)) {
         return res.send({ status: 7, msg: "Invalid Input fields" })
     }
+
     try {
+
         let content = selectionPrompt + '\nThe Selected Part is :-\n' + selection + 'The Document for reference is :-\n' + JSON.stringify(document) + 'The User query is :- \n' + msg
-        const resp = await client.chat.completions({
-            messages: [
-                {
-                    role: 'user',
-                    content: content
-                }
-            ],
-            max_tokens: 10000
-        })
-        const r = resp.choices[0].message.content.trim()
+
+        const r = await runAI(null, content, 10000)
+
         console.log(r)
+
         let history1
+
         if (chatId !== 'not') {
+
             let redisDraft = await redis.get(`Draft:${chatId}`) || null
+
             if (redisDraft) {
                 history1 = redisDraft
                 console.log('found in redis')
             }
             else {
+
                 history1 = await DraftModel.findOne({ _id: chatId }).lean()
+
                 if (history1) {
                     await redis.set(`Draft:${chatId}`, history1)
                 }
+
                 console.log('set in redis')
+
             }
+
         }
+
         let a = JSON.parse(history1.document)
+
         if (!history1) return res.send({ status: 8, msg: "History not found" })
+
         a[idx] = r
+
         history1.document = JSON.stringify(a)
+
         if (chatId !== 'not') {
+
             await DraftModel.updateOne(
                 { _id: chatId },
                 {
-                    $set: {document: JSON.stringify(a)}
+                    $set: { document: JSON.stringify(a) }
                 }
             )
+
             console.log('updated')
+
             await redis.set(`Draft:${chatId}`, history1)
+
         }
         else {
             await history1.save();
         }
+
         return res.send({ status: 1, msg: "edited", resp: r })
+
     }
     catch (err) {
+
         console.log(err)
+
         return res.send({ status: 0, msg: "Internal server error" })
+
+    }
+
+}
+
+function extractJSON(text) {
+    try {
+
+        if (!text) throw new Error("Empty response")
+
+        let cleaned = text.trim()
+
+        // remove markdown ```json blocks
+        if (cleaned.includes("```")) {
+            cleaned = cleaned
+                .replace(/```json/g, "")
+                .replace(/```/g, "")
+                .trim()
+        }
+
+        return JSON.parse(cleaned)
+
+    } catch (err) {
+
+        console.error("JSON PARSE FAILED")
+        console.error("Raw Response:", text)
+        return err
     }
 }
 
 async function DraftChat(req, res) {
+
     let { query, history, chatId, document1, mode } = req.body
+
     if (!query || !history || !chatId || !mode) {
         if (!(JSON.parse(history).length >= 0)) return res.send({ status: 7, msg: "Invalid Input fields" })
     }
+
     try {
+
         history = JSON.parse(history)
+
         history.unshift({ role: 'system', content: prompt })
+
         if (mode === 'document' && document1) {
             history[history.length - 1].content += `\nThe Document is :-\n${document1}`
         }
+
         history = [history[0], history[history.length - 1]]
+
         let response
         let document = null
-        let draft
-        const resp = await client.chat.completions({
-            messages: history,
-            max_tokens: 24000
-        })
 
-        const r = resp.choices[0].message.content.trim()
+        const r = await runAI(prompt, history[1].content, 24000)
+
         console.log(r)
 
         try {
-            let a = JSON.parse(r)
+
+            let a = extractJSON(r)
+
             if (typeof (a) === 'object') {
+                console.log('running...')
                 response = a.msg
+
                 if (!(a.document === null || a.document === 'null')) {
+                    console.log('running also')
                     document = await processDocument(a.document)
                 }
+
             }
+
         } catch (err) {
+
             console.log(err)
+
             response = "Sorry we are unable to process request. Try again"
+
         }
 
         let history1
+
         if (chatId !== 'not') {
+
             let redisDraft = await redis.get(`Draft:${chatId}`) || null
+
             if (redisDraft) {
+
                 history1 = redisDraft
+
                 console.log('found in redis')
+
             }
             else {
+
                 history1 = await DraftModel.findOne({ _id: chatId }).lean()
+
                 if (history1) {
-                    await redis.set(`Draft:${chatId}`, history1 , {EX: 3600})
+                    await redis.set(`Draft:${chatId}`, history1, { EX: 3600 })
                 }
+
                 console.log('set in redis')
+
             }
+
         }
+
         console.log(history1)
+
         let title
+
         if (!history1) {
+
             title = await generateTitle(query)
+
             history1 = new DraftModel({ title, userId: req.user._id, messages: [] });
+
         }
+
         let ob1 = {
             role: 'user',
             content: query
         }
+
         let obj2 = {
             role: 'assistant',
             content: response
         }
+
         history1.messages.push(ob1);
         history1.messages.push(obj2);
+
         if (document) {
+
             history1.document = JSON.stringify(document)
+
             document = JSON.stringify(document)
+
         }
+
         if (chatId !== 'not') {
+
             await DraftModel.findByIdAndUpdate(
-                chatId ,
+                chatId,
                 {
                     $set: history1
                 }
             )
-            await redis.set(`Draft:${chatId}`, history1 , {EX: 3600})
+
+            await redis.set(`Draft:${chatId}`, history1, { EX: 3600 })
+
             console.log('updated')
+
         }
         else {
+
             await history1.save();
+
         }
+
         res.send({ status: 1, reply: response, HID: history1._id, title, document });
+
     } catch (err) {
+
         console.error('the error is', err);
+
         res.send({ status: 0, reply: "Error fetching AI response" });
+
     }
+
 }
 
 export { DraftChat, selectionEdit }

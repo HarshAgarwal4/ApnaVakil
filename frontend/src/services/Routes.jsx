@@ -7,6 +7,9 @@ import ForgotPassword from "../pages/FgtPwd";
 import ProtectedRoute from "./Authentication";
 import { PaymentProtected } from "./PaidPage";
 import LawyersPage from "../pages/Lawyers";
+import Disclaimer from "../pages/Disclaimer";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
+import TermsAndConditions from "../pages/TermsOfService";
 
 const router = createBrowserRouter([
     {
@@ -37,6 +40,18 @@ const router = createBrowserRouter([
             </PaymentProtected>
 
         </ProtectedRoute>
+    },
+    {
+        path: '/disclaimer',
+        element: <Disclaimer />
+    },
+    {
+        path: '/privacy-policy',
+        element: <PrivacyPolicy />
+    },
+    {
+        path: '/terms-and-conditions',
+        element: <TermsAndConditions />
     }
 ])
 

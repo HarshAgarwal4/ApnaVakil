@@ -39,6 +39,7 @@ ${chat}
 `
 
     const response = await client.chat.completions({
+        model: 'sarvam-105b',
         messages: [
             {
                 role: "user",
@@ -46,8 +47,8 @@ ${chat}
             },
         ],
     });
-    console.log("title is ", response.choices[0].message.content.split('"')[0]);
-    return response.choices[0].message.content.split('"')[0]
+    console.log("title is ", response.choices[0].message.content);
+    return response.choices[0].message.content
 }
 
 export { generateTitle }

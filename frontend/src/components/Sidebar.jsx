@@ -5,7 +5,7 @@ import axios from '../services/axios';
 import { useStore } from '../zustand/store';
 
 const Sidebar = () => {
-    const { chat, setChat, setActiveChat, setHistory, sidebarOpen, setDraftChatHistory, setSidebarOpen, All_Histories, fetchHistory, YourDrafts, setActiveDraft, DraftMode , setDocument} = useStore()
+    const { chat, setChat, setActiveChat, setHistory, sidebarOpen, setDraftChatHistory, setSidebarOpen, All_Histories, fetchHistory, YourDrafts, setActiveDraft, DraftMode, setDocument } = useStore()
 
     const clear = () => {
         setActiveChat(null);
@@ -32,9 +32,16 @@ const Sidebar = () => {
         >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                <h1 className={`font-bold transition-all duration-300 ${!sidebarOpen && "opacity-0 text-xs sm:text-base"} text-base sm:text-xl`}>
-                    Apna Vakil
-                </h1>
+                <div className='flex justify-center items-center gap-2'>
+                    <img onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className='cursor-pointer w-14 hover:scale-105 transition'
+                        src="/darkLogo.png"
+                        alt="logo"
+                    />
+                    <h1 className={`font-bold transition-all duration-300 ${!sidebarOpen && "opacity-0 text-xs sm:text-base"} text-base sm:text-2xl`}>
+                        Apna Vakil
+                    </h1>
+                </div>
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
                     className="p-2 rounded-md hover:bg-gray-700"

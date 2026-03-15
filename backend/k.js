@@ -8,13 +8,13 @@ const client = new SarvamAIClient({
 
 async function main() {
     const response = await client.chat.completions({
+        model:'sarvam-m',
         messages: [
             {
                 role: "user",
-                content: "is there any api limit in your sarvam m chat free model"
+                content: "say yes or no only in one word"
             },
-        ],
-        wiki_grounding: true
+        ]
     });
     console.log(response.choices[0].message.content);
 }
