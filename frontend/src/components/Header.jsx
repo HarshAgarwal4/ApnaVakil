@@ -4,10 +4,14 @@ import { useStore } from '../zustand/store';
 import { Search } from 'lucide-react';
 import ConsultationModal from './LawyerModal';
 import { FaBars } from "react-icons/fa";
+import { BsThreeDotsVertical } from "react-icons/bs";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const {
     showPricingBox,
@@ -18,7 +22,9 @@ const Header = () => {
     setSidebarOpen,
     DraftMode,
     setDraft,
-    Lawyers
+    Lawyers,
+    rightSideBarOpen,
+    setRightSideBarOpen
   } = useStore();
 
   const [search, setSearch] = useState("");
@@ -26,12 +32,6 @@ const Header = () => {
   const [box, setBox] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [currentLawyer, setCurrentLawyer] = useState(null);
-
-  // 🔥 SEARCH MODES (Enable "laws" later by uncommenting)
-  const SEARCH_MODES = [
-    { value: "lawyers", label: "Lawyers" },
-    // { value: "laws", label: "Laws" }, // enable in future
-  ];
 
   function toggleDraft() {
     if (location.pathname === '/lawyers') {
@@ -41,7 +41,6 @@ const Header = () => {
     }
   }
 
-  // 🔥 Live Search Effect
   useEffect(() => {
     if (mode !== "lawyers") return;
 
@@ -58,11 +57,11 @@ const Header = () => {
   }, [search, mode, Lawyers]);
 
   return (
-    <header className="flex justify-between items-center px-6 py-3 bg-white border-b border-blue-100 shadow-sm relative">
+    <header className="flex justify-between items-center px-6 py-3 bg-white border-b border-blue-100 shadow-sm relative z-[100]">
 
       {/* LEFT */}
       <div className='flex items-center gap-3'>
-        <div onClick={() => setSidebarOpen(!sidebarOpen)}>
+        <div onClick={() => setSidebarOpen(!sidebarOpen)} className="cursor-pointer">
           <FaBars size={24} />
         </div>
 
@@ -81,36 +80,10 @@ const Header = () => {
           />
         )}
 
-        <div className="hidden md:flex items-center 
-                                bg-blue-50 border border-blue-200 
-                                rounded-full px-5 py-2 w-[40vw] 
-                                focus-within:ring-2 focus-within:ring-blue-900 
-                                transition-all">
-
-          {/* Mode Dropdown */}
-          {/* <div className="relative mr-4">
-                        <select
-                            value={mode}
-                            onChange={(e) => setMode(e.target.value)}
-                            className="appearance-none bg-transparent pr-6 
-                                       text-sm font-medium text-blue-900 
-                                       outline-none cursor-pointer"
-                        >
-                            {SEARCH_MODES.map((m) => (
-                                <option key={m.value} value={m.value}>
-                                    {m.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <span className="absolute right-0 top-1/2 -translate-y-1/2 text-blue-500 text-xs pointer-events-none">
-                            ▼
-                        </span>
-                    </div> */}
+        <div className="hidden md:flex items-center bg-blue-50 border border-blue-200 rounded-full px-5 py-2 w-[40vw] focus-within:ring-2 focus-within:ring-blue-900 transition-all">
 
           <div className="h-5 w-px bg-blue-200 mr-4"></div>
 
-          {/* Input */}
           <input
             type="text"
             value={search}
@@ -122,11 +95,8 @@ const Header = () => {
           <Search size={18} className="ml-3 text-blue-600" />
         </div>
 
-        {/* 🔥 Live Search Dropdown */}
         {mode === "lawyers" && search && (
-          <div className="absolute mt-2 w-[40vw] bg-white 
-                                    border border-blue-100 rounded-xl 
-                                    shadow-xl max-h-64 overflow-y-auto z-50">
+          <div className="absolute mt-2 w-[40vw] bg-white border border-blue-100 rounded-xl shadow-xl max-h-64 overflow-y-auto z-50">
 
             {box.length === 0 ? (
               <div className="p-4 text-sm text-slate-500">
@@ -136,8 +106,7 @@ const Header = () => {
               box.map((itm) => (
                 <div
                   key={itm._id}
-                  className="flex items-center gap-3 px-4 py-3 
-                                               hover:bg-blue-50 cursor-pointer transition"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer transition"
                   onClick={() => {
                     setCurrentLawyer(itm);
                     setShowModal(true);
@@ -156,66 +125,147 @@ const Header = () => {
                 </div>
               ))
             )}
+
           </div>
         )}
 
       </div>
 
-      {/* RIGHT */}
-      <div className='flex gap-4 items-center'>
+      {/* DESKTOP RIGHT BUTTONS */}
+      <div className='hidden md:flex gap-4 items-center'>
 
         <button
           onClick={toggleDraft}
-          className='px-4 py-2 bg-blue-900 text-white rounded-lg 
-                               hover:bg-blue-800 text-sm transition'
+          className='px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 text-sm transition'
         >
           {DraftMode ? "ChatBot" : "Drafts"}
         </button>
 
         <button
           onClick={() => navigate('/lawyers')}
-          className='px-4 py-2 border border-blue-900 text-blue-900 
-                               rounded-lg hover:bg-blue-50 text-sm transition'
+          className='px-4 py-2 border border-blue-900 text-blue-900 rounded-lg hover:bg-blue-50 text-sm transition'
         >
           Lawyers
         </button>
 
-        {/* USER DROPDOWN */}
-        <div className="relative group">
-          <div className="px-4 py-2 bg-blue-50 border border-blue-200 
-                                    rounded-lg cursor-pointer 
-                                    hover:bg-blue-100 text-sm text-blue-900 transition">
-            {user?.name || 'User'}
+        {/* PROFILE DROPDOWN */}
+        <div className="relative">
+
+          <div
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 text-sm text-blue-900 transition"
+          >
+            {user?.name || "User"}
           </div>
 
-          <div className="absolute right-0 mt-2 w-52 bg-white 
-                                    border border-blue-100 rounded-xl 
-                                    shadow-xl opacity-0 invisible 
-                                    group-hover:opacity-100 
-                                    group-hover:visible 
-                                    transition-all duration-200">
+          {profileOpen && (
+            <div className="absolute right-0 mt-2 w-52 bg-white border border-blue-100 rounded-xl shadow-xl z-50">
+
+              <button
+                onClick={() => {
+                  setShowPricingBox(!showPricingBox);
+                  setProfileOpen(false);
+                }}
+                className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 rounded-t-xl transition"
+              >
+                Subscription
+              </button>
+
+              <button
+                onClick={() => {
+                  logout();
+                  setProfileOpen(false);
+                }}
+                className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-xl transition"
+              >
+                Logout
+              </button>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* MOBILE THREE DOT MENU */}
+      <div className="md:hidden relative">
+
+        <div className='flex justify-center gap-2'>
+
+          {DraftMode ? (
+            <button
+              onClick={() => setRightSideBarOpen(!rightSideBarOpen)}
+              className='btn'
+            >
+              View Draft
+            </button>
+          ) : (
+            <button
+              onClick={() => setRightSideBarOpen(!rightSideBarOpen)}
+              className='btn'
+            >
+              Panel
+            </button>
+          )}
+
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2"
+          >
+            {menuOpen ? "❌" : <BsThreeDotsVertical size={22} />}
+          </button>
+
+        </div>
+
+        {menuOpen && (
+          <div className="absolute right-0 mt-2 w-52 bg-white border border-blue-100 rounded-xl shadow-xl z-50">
 
             <button
-              onClick={() => setShowPricingBox(!showPricingBox)}
-              className="block w-full text-left px-4 py-3 
-                                       text-blue-900 hover:bg-blue-50 
-                                       rounded-t-xl transition"
+              onClick={() => {
+                toggleDraft();
+                setMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
+            >
+              {DraftMode ? "ChatBot" : "Drafts"}
+            </button>
+
+            <button
+              onClick={() => {
+                navigate('/lawyers');
+                setMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
+            >
+              Lawyers
+            </button>
+
+            <button
+              onClick={() => {
+                setShowPricingBox(!showPricingBox);
+                setMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
             >
               Subscription
             </button>
 
             <button
-              onClick={logout}
-              className="block w-full text-left px-4 py-3 
-                                       text-red-600 hover:bg-red-50 
-                                       rounded-b-xl transition"
+              onClick={() => {
+                logout();
+                setMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-xl transition"
             >
               Logout
             </button>
+
           </div>
-        </div>
+        )}
 
       </div>
+
     </header>
   );
 };

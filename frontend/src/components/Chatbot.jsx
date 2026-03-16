@@ -221,6 +221,60 @@ const Chatbot = ({ disc, showdisc }) => {
         <div className="flex-1 relative flex flex-col  h-full">
 
             <div className="flex-1 space-y-6 p-4 md:p-6 overflow-y-auto">
+
+                {history.length === 0 && (
+                    <div className="flex flex-col items-center justify-center text-center mt-16 space-y-6">
+
+                        <img
+                            src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png"
+                            className="w-16 h-16"
+                            alt="bot"
+                        />
+
+                        <div>
+                            <h2 className="text-2xl font-semibold text-blue-900">
+                                Hello {user?.name || "there"} 👋
+                            </h2>
+                            <p className="text-gray-600 mt-2">
+                                How can your legal assistant help today?
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-xl w-full">
+
+                            <button
+                                onClick={() => setInput("What should I do if I receive a legal notice?")}
+                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                            >
+                                📄 What should I do if I receive a legal notice?
+                            </button>
+
+                            <button
+                                onClick={() => setInput("How can I file a consumer complaint in India?")}
+                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                            >
+                                ⚖️ How can I file a consumer complaint?
+                            </button>
+
+                            <button
+                                onClick={() => setInput("Explain FIR and how to file it")}
+                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                            >
+                                🚔 Explain FIR and how to file it
+                            </button>
+
+                            <button
+                                onClick={() => setInput("What are my rights during police questioning?")}
+                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                            >
+                                🛡️ Rights during police questioning
+                            </button>
+
+                        </div>
+
+                    </div>
+                )}
+
                 {history.map((msg, i) =>
                     msg.role === "user" ? (
                         <UserMsg key={i} msg={msg} />

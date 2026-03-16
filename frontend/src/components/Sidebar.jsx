@@ -5,7 +5,8 @@ import axios from '../services/axios';
 import { useStore } from '../zustand/store';
 
 const Sidebar = () => {
-    const { chat, setChat, setActiveChat, setHistory, sidebarOpen, setDraftChatHistory, setSidebarOpen, All_Histories, fetchHistory, YourDrafts, setActiveDraft, DraftMode, setDocument } = useStore()
+    const [menuOpen, setMenuOpen] = useState(false);
+    const {chat, setChat, setActiveChat, setHistory, sidebarOpen, setDraftChatHistory, setSidebarOpen, All_Histories, fetchHistory, YourDrafts, setActiveDraft, DraftMode, setDocument } = useStore()
 
     const clear = () => {
         setActiveChat(null);
@@ -23,9 +24,9 @@ const Sidebar = () => {
             className={`
                 bg-gray-800 text-gray-200 flex flex-col
                 transition-all duration-300 ease-in-out
-                fixed sm:relative h-full z-50
+                fixed sm:relative h-full z-250
                 ${sidebarOpen
-                    ? "w-[60vw] sm:w-[20vw] opacity-100"
+                    ? "w-[60vw] sm:w-[40vw] md:w-[20vw] opacity-100"
                     : "w-0 sm:w-[20vw] opacity-0 overflow-hidden"
                 }
             `}
@@ -34,11 +35,11 @@ const Sidebar = () => {
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
                 <div className='flex justify-center items-center gap-2'>
                     <img onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className='cursor-pointer w-14 hover:scale-105 transition'
+                        className='cursor-pointer w-8 sm:w-14 hover:scale-105 transition'
                         src="/darkLogo.png"
                         alt="logo"
                     />
-                    <h1 className={`font-bold transition-all duration-300 ${!sidebarOpen && "opacity-0 text-xs sm:text-base"} text-base sm:text-2xl`}>
+                    <h1 className={`font-bold transition-all duration-300 ${!sidebarOpen && "opacity-0 text-xs sm:text-base"} text-base text-md sm:text-2xl`}>
                         Apna Vakil
                     </h1>
                 </div>

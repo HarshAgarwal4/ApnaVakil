@@ -34,6 +34,8 @@ export const useStore = create((set, get) => ({
     isloading: true,
     lawyers: []
   },
+  rightSideBarOpen: false,
+  setRightSideBarOpen: (rightSideBarOpen) => set({rightSideBarOpen}),
 
   /* ===================== SETTERS ===================== */
   setUser: (user) => set({ user }),
