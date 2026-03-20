@@ -19,6 +19,7 @@ STRICT RULES:
 4. Do NOT wrap the output in code blocks.
 5. Preserve all original content — only improve formatting and structure.
 6. Do NOT change wording, meaning, or add new content.
+7. Give document as plain text only not in code format
 `;
 
 async function FormatDocument(req, res) {
@@ -37,7 +38,7 @@ async function FormatDocument(req, res) {
             ],
             max_tokens: 24000
         })
-        const r = res1.choices[0].message.content.trim().split('<think>')[1].trim()
+        const r = res1.choices[0].message.content.trim().split('</think>')[1].trim()
         return res.send({status:1 ,msg:"Done" , document: r})
     }
     catch(err){
