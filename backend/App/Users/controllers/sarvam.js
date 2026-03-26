@@ -39,7 +39,7 @@ ${chat}
 `
 
     const response = await client.chat.completions({
-        model: 'sarvam-30b-16k',
+        model: 'sarvam-30b',
         messages: [
             {
                 role: "user",

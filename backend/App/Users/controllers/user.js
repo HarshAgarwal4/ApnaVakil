@@ -20,6 +20,12 @@ async function saveUser(req, res) {
             let obj = { name, email, password };
             const newUser = new userModel(obj)
             await newUser.save();
+            res.cookie('UID', token, {
+                httpOnly: process.env.production === "true",
+                secure: process.env.production === "true",
+                sameSite: process.env.production === "true" ? 'none' : 'Lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            })
             return res.send({ status: 1, msg: "User created successfully" });
         }
     } catch (err) {
@@ -49,7 +55,6 @@ async function login(req, res) {
             httpOnly: process.env.production === "true",
             secure: process.env.production === "true",
             sameSite: process.env.production === "true" ? 'none' : 'Lax',
-            path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
         return res.send({ status: 1, msg: "Login successful" });

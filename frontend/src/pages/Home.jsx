@@ -125,7 +125,7 @@ const Home = () => {
   }
 
   return (
-    <div className="font-sans text-slate-900 overflow-x-hidden">
+    <div className="font-sans text-slate-900 overflow-x-hidden bg-slate-50">
 
       {/* ================= NAVBAR ================= */}
       <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200 shadow-sm">

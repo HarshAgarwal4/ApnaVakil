@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useStore } from "../zustand/store";
 import axios from "../services/axios";
 import jsPDF from "jspdf";
 import { toast } from "react-toastify";
+import remarkBreaks from "remark-breaks";
 
 const PrintDialog = () => {
   const { showPrintPage, setShowPrintPage, print, setPrint } = useStore();
@@ -247,11 +247,18 @@ const PrintDialog = () => {
                     fontSize: 16
                   }}
                 >
-                  <div id="printerSystemID">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {print}
-                    </ReactMarkdown>
-                  </div>
+                  <div
+  id="printerSystemID"
+  style={{
+    fontFamily: "Times New Roman, serif",
+    lineHeight: 1.8,
+    fontSize: 16
+  }}
+>
+  <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+    {print}
+  </ReactMarkdown>
+</div>
                 </div>
               ) : (
                 <p className="text-center text-gray-500 italic">
