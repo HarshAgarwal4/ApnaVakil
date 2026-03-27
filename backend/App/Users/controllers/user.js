@@ -19,8 +19,9 @@ async function saveUser(req, res) {
         else {
             let obj = { name, email, password };
             const newUser = new userModel(obj)
-            await newUser.save();
             let token = await setuser(newUser)
+            newUser.refreshToken = token
+            await newUser.save();
             res.cookie('UID', token, {
                 httpOnly: process.env.production === "true",
                 secure: process.env.production === "true",
