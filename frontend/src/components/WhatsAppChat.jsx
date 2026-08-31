@@ -27,7 +27,6 @@ import {
 import { useStore } from "../zustand/store";
 import axios from "../services/axios";
 import { getSocket } from "../services/socket";
-import CallModal from "./CallModal";
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB Max
 

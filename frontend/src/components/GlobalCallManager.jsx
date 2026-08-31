@@ -1,37 +1,26 @@
 import React, { useEffect } from "react";
 import { useStore } from "../zustand/store";
-import { getSocket } from "../services/socket";
 import CallModal from "./CallModal";
+import { getSocket } from "../services/socket";
 
 export default function GlobalCallManager() {
   const { user, activeCall, setActiveCall } = useStore();
-
-  const currentUserId = user?._id?.toString() || user?.id?.toString() || user?.email;
+  const currentUserName =
+    user?.name || (user?.role === "lawyer" ? "Advocate" : "Client");
+  const currentUserId = user?._id?.toString() || user?.id?.toString() || user?.email || "";
   const currentUserEmail = user?.email || "";
-  const currentRole = user?.role || "user";
+  const currentUserRole = user?.role || "user";
 
   useEffect(() => {
-    if (!currentUserId && !currentUserEmail) return;
+    if (!currentUserId) return undefined;
 
-    // Connect socket globally on login
-    const socket = getSocket(currentUserId, currentRole, currentUserEmail);
+    const socket = getSocket(currentUserId, currentUserRole, currentUserEmail);
 
-    // Global Incoming Call Listener
-    const handleIncomingCall = (callData) => {
-      console.log("🔔 Global Incoming Call Received:", callData);
-      setActiveCall({
-        type: "incoming",
-        callType: callData.callType || "video",
-        conversationId: callData.conversationId,
-        caller: {
-          id: callData.callerId,
-          email: callData.callerEmail || "",
-          name: callData.callerName || "Advocate / Client",
-          avatar: callData.callerAvatar || "/profile.png",
-          role: callData.callerRole || "user",
-        },
-        offer: callData.offer,
-      });
+    const handleIncomingCall = (session) => {
+      if (!session?.conversationId) return;
+      if (!activeCall) {
+        setActiveCall({ ...session, type: "incoming", status: "ringing" });
+      }
     };
 
     socket.on("incoming_call", handleIncomingCall);
@@ -39,17 +28,15 @@ export default function GlobalCallManager() {
     return () => {
       socket.off("incoming_call", handleIncomingCall);
     };
-  }, [currentUserId, currentUserEmail, currentRole]);
+  }, [activeCall, currentUserId, currentUserEmail, currentUserRole, setActiveCall]);
 
   if (!activeCall) return null;
 
   return (
     <CallModal
       callState={activeCall}
-      currentUserId={currentUserId}
-      currentUserEmail={currentUserEmail}
-      currentUserName={user?.name || (currentRole === "lawyer" ? "Advocate" : "Client")}
-      currentUserRole={currentRole}
+      currentUserName={currentUserName}
+      currentUserRole={currentUserRole}
       onClose={() => setActiveCall(null)}
     />
   );

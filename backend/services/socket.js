@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { randomUUID } from "crypto";
 import { MessageModel } from "../App/Users/models/Message.js";
 import lawyerModel from "../App/Admin/models/lawyers.js";
 import userModel from "../App/Users/models/user.js";
@@ -10,10 +11,52 @@ import {
   getFromRedis,
   deleteFromRedis,
   pushToRedisList,
-  getRedisList,
 } from "./redis.js";
 
 let io = null;
+const CALL_SESSION_TTL_SECONDS = 60 * 60;
+
+const parseMaybeJson = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const getCallRoomId = (conversationId) => {
+  if (!conversationId) return null;
+  return `call:${conversationId}`;
+};
+
+const getCallSessionKey = (conversationId) => {
+  if (!conversationId) return null;
+  return `call_session:${conversationId}`;
+};
+
+const persistCallSession = async (conversationId, session, ttl = CALL_SESSION_TTL_SECONDS) => {
+  const key = getCallSessionKey(conversationId);
+  if (!key) return null;
+  const payload = JSON.stringify(session);
+  await setInRedis(key, payload, ttl);
+  return session;
+};
+
+const readCallSession = async (conversationId) => {
+  const key = getCallSessionKey(conversationId);
+  if (!key) return null;
+  const value = await getFromRedis(key);
+  return parseMaybeJson(value);
+};
+
+const endCallSession = async (conversationId) => {
+  const key = getCallSessionKey(conversationId);
+  if (!key) return;
+  await deleteFromRedis(key);
+};
 
 // Helper to resolve all associated room identifiers (userId, lawyer profile _id, case-insensitive emails)
 async function resolveUserAndLawyerTargets(identifierOrEmail) {
@@ -83,6 +126,7 @@ export const initSocket = (httpServer, corsOptions) => {
     const userId = socket.handshake.query.userId;
     const userRole = socket.handshake.query.role || "user";
     const userEmail = socket.handshake.query.email || "";
+    const activeCallRooms = new Set();
 
     const joinUserRooms = async (uId, uEmail) => {
       const roomsToJoin = new Set();
@@ -179,6 +223,240 @@ export const initSocket = (httpServer, corsOptions) => {
     socket.on("leave_conversation", ({ conversationId }) => {
       if (conversationId) {
         socket.leave(conversationId);
+      }
+    });
+
+    socket.on("join_call_room", async ({ conversationId, sessionId } = {}, callback) => {
+      const roomId = getCallRoomId(conversationId);
+      if (!roomId) {
+        if (callback) callback({ status: 0, msg: "Missing call room" });
+        return;
+      }
+
+      socket.join(roomId);
+      activeCallRooms.add(roomId);
+
+      let session = null;
+      if (sessionId || conversationId) {
+        session = await readCallSession(conversationId);
+      }
+
+      if (callback) {
+        callback({ status: 1, roomId, session });
+      }
+    });
+
+    socket.on("initiate_call", async (payload = {}, callback) => {
+      try {
+        const {
+          conversationId,
+          callType = "video",
+          callerId,
+          callerEmail,
+          callerName,
+          callerRole = userRole,
+          receiverId,
+          receiverEmail,
+          receiverName,
+          receiverRole,
+        } = payload;
+
+        if (!conversationId || (!receiverId && !receiverEmail)) {
+          if (callback) callback({ status: 0, msg: "Invalid call payload" });
+          return;
+        }
+
+        const roomId = getCallRoomId(conversationId);
+        const existing = await readCallSession(conversationId);
+        if (existing && ["ringing", "active"].includes(existing.status)) {
+          if (callback) callback({ status: 0, msg: "A call is already active" });
+          return;
+        }
+
+        const session = {
+          conversationId,
+          roomId,
+          callType,
+          status: "ringing",
+          sessionId: randomUUID(),
+          caller: {
+            id: callerId || userId || null,
+            email: callerEmail || userEmail || "",
+            name: callerName || "Caller",
+            role: callerRole || "user",
+          },
+          receiver: {
+            id: receiverId || null,
+            email: receiverEmail || "",
+            name: receiverName || "Recipient",
+            role: receiverRole || "user",
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await persistCallSession(conversationId, session);
+        socket.join(roomId);
+        activeCallRooms.add(roomId);
+
+        const receiverRoom = receiverId || receiverEmail?.toLowerCase();
+        if (receiverRoom) {
+          io.to(receiverRoom).emit("incoming_call", session);
+        }
+
+        if (callback) callback({ status: 1, session });
+      } catch (error) {
+        console.error("Error in initiate_call:", error);
+        if (callback) callback({ status: 0, msg: "Unable to start call" });
+      }
+    });
+
+    socket.on("accept_call", async (payload = {}, callback) => {
+      try {
+        const { conversationId, acceptedById, acceptedByEmail, acceptedByName } = payload;
+        if (!conversationId) {
+          if (callback) callback({ status: 0, msg: "Missing conversationId" });
+          return;
+        }
+
+        const existing = await readCallSession(conversationId);
+        if (!existing) {
+          if (callback) callback({ status: 0, msg: "Call session not found" });
+          return;
+        }
+
+        const roomId = getCallRoomId(conversationId);
+        const updated = {
+          ...existing,
+          status: "active",
+          updatedAt: new Date().toISOString(),
+          acceptedBy: {
+            id: acceptedById || userId || null,
+            email: acceptedByEmail || userEmail || "",
+            name: acceptedByName || "Participant",
+          },
+        };
+
+        await persistCallSession(conversationId, updated);
+        socket.join(roomId);
+        activeCallRooms.add(roomId);
+
+        io.to(roomId).emit("call_accepted", updated);
+        if (callback) callback({ status: 1, session: updated });
+      } catch (error) {
+        console.error("Error in accept_call:", error);
+        if (callback) callback({ status: 0, msg: "Unable to accept call" });
+      }
+    });
+
+    socket.on("reject_call", async (payload = {}, callback) => {
+      try {
+        const { conversationId, rejectedById, rejectedByEmail, rejectedByName } = payload;
+        if (!conversationId) {
+          if (callback) callback({ status: 0, msg: "Missing conversationId" });
+          return;
+        }
+
+        const existing = await readCallSession(conversationId);
+        if (existing) {
+          const updated = {
+            ...existing,
+            status: "rejected",
+            updatedAt: new Date().toISOString(),
+            rejectedBy: {
+              id: rejectedById || userId || null,
+              email: rejectedByEmail || userEmail || "",
+              name: rejectedByName || "Participant",
+            },
+          };
+          await persistCallSession(conversationId, updated, 60);
+          const callerRoom = existing.caller?.id || existing.caller?.email?.toLowerCase();
+          if (callerRoom) {
+            io.to(callerRoom).emit("call_rejected", updated);
+          }
+        }
+
+        if (callback) callback({ status: 1 });
+      } catch (error) {
+        console.error("Error in reject_call:", error);
+        if (callback) callback({ status: 0, msg: "Unable to reject call" });
+      }
+    });
+
+    socket.on("end_call", async (payload = {}, callback) => {
+      try {
+        const { conversationId, endedById, endedByEmail, reason = "ended" } = payload;
+        if (!conversationId) {
+          if (callback) callback({ status: 0, msg: "Missing conversationId" });
+          return;
+        }
+
+        const existing = await readCallSession(conversationId);
+        const roomId = getCallRoomId(conversationId);
+        const endedSession = existing
+          ? {
+              ...existing,
+              status: "ended",
+              reason,
+              updatedAt: new Date().toISOString(),
+              endedBy: {
+                id: endedById || userId || null,
+                email: endedByEmail || userEmail || "",
+              },
+            }
+          : {
+              conversationId,
+              roomId,
+              status: "ended",
+              reason,
+              updatedAt: new Date().toISOString(),
+            };
+
+        if (existing) {
+          await endCallSession(conversationId);
+        }
+
+        if (roomId) {
+          io.to(roomId).emit("call_ended", endedSession);
+        }
+
+        if (callback) callback({ status: 1 });
+      } catch (error) {
+        console.error("Error in end_call:", error);
+        if (callback) callback({ status: 0, msg: "Unable to end call" });
+      }
+    });
+
+    socket.on("webrtc_offer", ({ conversationId, offer }) => {
+      const roomId = getCallRoomId(conversationId);
+      if (roomId && offer) {
+        socket.to(roomId).emit("webrtc_offer", {
+          conversationId,
+          offer,
+          from: userId || userEmail || null,
+        });
+      }
+    });
+
+    socket.on("webrtc_answer", ({ conversationId, answer }) => {
+      const roomId = getCallRoomId(conversationId);
+      if (roomId && answer) {
+        socket.to(roomId).emit("webrtc_answer", {
+          conversationId,
+          answer,
+          from: userId || userEmail || null,
+        });
+      }
+    });
+
+    socket.on("webrtc_ice_candidate", ({ conversationId, candidate }) => {
+      const roomId = getCallRoomId(conversationId);
+      if (roomId && candidate) {
+        socket.to(roomId).emit("webrtc_ice_candidate", {
+          conversationId,
+          candidate,
+          from: userId || userEmail || null,
+        });
       }
     });
 
@@ -310,250 +588,15 @@ export const initSocket = (httpServer, corsOptions) => {
       }
     });
 
-    // ==========================================
-    // 🎥 WEBRTC 1-ON-1 AUDIO & VIDEO CALLING
-    // ==========================================
-
-    // 1. Call Initiation
-    socket.on("call_user", async (data, callback) => {
-      try {
-        const {
-          conversationId,
-          callerId,
-          callerEmail,
-          callerName,
-          callerAvatar,
-          callerRole,
-          receiverId,
-          receiverEmail,
-          callType, // 'video' | 'audio'
-          offer,
-        } = data;
-
-        if (!receiverId || !offer) {
-          if (callback) callback({ status: 0, msg: "Missing call parameters" });
-          return;
-        }
-
-        // Check if receiver is in another active call via Redis
-        const isReceiverBusy =
-          (await getFromRedis(`active_call:${receiverId}`)) ||
-          (receiverEmail && (await getFromRedis(`active_call:${receiverEmail}`)));
-
-        if (isReceiverBusy) {
-          if (callback) callback({ status: 0, msg: "User is currently busy on another call" });
-          return;
-        }
-
-        const callSession = {
-          conversationId,
-          callerId,
-          callerEmail,
-          callerName,
-          callerAvatar,
-          callerRole,
-          receiverId,
-          receiverEmail,
-          callType,
-          status: "ringing",
-          createdAt: Date.now(),
-        };
-
-        // Cache call in Redis with 2-minute ringing TTL
-        await setInRedis(`active_call:${callerId}`, callSession, 120);
-        await setInRedis(`active_call:${receiverId}`, callSession, 120);
-        if (receiverEmail) await setInRedis(`active_call:${receiverEmail}`, callSession, 120);
-
-        // Resolve all possible target rooms for the receiver
-        const targetRooms = new Set();
-        if (receiverId) targetRooms.add(receiverId);
-        if (receiverEmail) {
-          targetRooms.add(receiverEmail);
-          targetRooms.add(receiverEmail.toLowerCase());
-        }
-
-        const resolvedReceiver = await resolveUserAndLawyerTargets(receiverId || receiverEmail);
-        resolvedReceiver.forEach((r) => targetRooms.add(r));
-
-        targetRooms.forEach((target) => {
-          io.to(target).emit("incoming_call", {
-            conversationId,
-            callerId,
-            callerEmail,
-            callerName,
-            callerAvatar,
-            callerRole,
-            callType,
-            offer,
-          });
-        });
-
-        if (callback) callback({ status: 1, msg: "Ringing..." });
-      } catch (callErr) {
-        console.error("Error in call_user:", callErr);
-        if (callback) callback({ status: 0, msg: "Failed to initiate call" });
-      }
-    });
-
-    // 2. Answer Incoming Call
-    socket.on("answer_call", async (data) => {
-      try {
-        const { callerId, callerEmail, receiverId, receiverEmail, conversationId, answer, callType } = data;
-
-        const connectedSession = {
-          callerId,
-          callerEmail,
-          receiverId,
-          receiverEmail,
-          conversationId,
-          callType,
-          status: "connected",
-          connectedAt: Date.now(),
-        };
-        await setInRedis(`active_call:${callerId}`, connectedSession, 7200);
-        await setInRedis(`active_call:${receiverId || userId}`, connectedSession, 7200);
-
-        // Resolve all possible caller target rooms
-        const callerTargets = new Set();
-        if (callerId) callerTargets.add(callerId);
-        if (callerEmail) {
-          callerTargets.add(callerEmail);
-          callerTargets.add(callerEmail.toLowerCase());
-        }
-
-        const resolvedCaller = await resolveUserAndLawyerTargets(callerId || callerEmail);
-        resolvedCaller.forEach((c) => callerTargets.add(c));
-
-        callerTargets.forEach((cId) => {
-          io.to(cId).emit("call_accepted", {
-            answer,
-            callType,
-            receiverId: receiverId || userId,
-            receiverEmail: receiverEmail || userEmail,
-            conversationId,
-          });
-        });
-      } catch (ansErr) {
-        console.error("Error in answer_call:", ansErr);
-      }
-    });
-
-    // 3. ICE Candidate Exchange
-    socket.on("ice_candidate", async ({ targetId, targetEmail, conversationId, candidate }) => {
-      if (candidate) {
-        const candTargets = new Set();
-        if (targetId) candTargets.add(targetId);
-        if (targetEmail) {
-          candTargets.add(targetEmail);
-          candTargets.add(targetEmail.toLowerCase());
-        }
-
-        const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
-        resolved.forEach((t) => candTargets.add(t));
-
-        candTargets.forEach((tId) => {
-          io.to(tId).emit("ice_candidate", {
-            candidate,
-            senderId: userId,
-            conversationId,
-          });
-        });
-      }
-    });
-
-    // 4. End Call (Hang up)
-    socket.on("end_call", async ({ targetId, targetEmail, conversationId }) => {
-      try {
-        if (userId) await deleteFromRedis(`active_call:${userId}`);
-        if (targetId) await deleteFromRedis(`active_call:${targetId}`);
-        if (targetEmail) await deleteFromRedis(`active_call:${targetEmail}`);
-
-        const endTargets = new Set();
-        if (targetId) endTargets.add(targetId);
-        if (targetEmail) {
-          endTargets.add(targetEmail);
-          endTargets.add(targetEmail.toLowerCase());
-        }
-
-        const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
-        resolved.forEach((t) => endTargets.add(t));
-
-        endTargets.forEach((tId) => {
-          io.to(tId).emit("call_ended", { senderId: userId, conversationId });
-        });
-
-        if (conversationId) {
-          io.to(conversationId).emit("call_ended", { senderId: userId, conversationId });
-        }
-      } catch (endErr) {
-        console.error("Error in end_call:", endErr);
-      }
-    });
-
-    // 5. Reject Call (Decline)
-    socket.on("reject_call", async ({ callerId, callerEmail, conversationId }) => {
-      try {
-        if (userId) await deleteFromRedis(`active_call:${userId}`);
-        if (callerId) await deleteFromRedis(`active_call:${callerId}`);
-        if (callerEmail) await deleteFromRedis(`active_call:${callerEmail}`);
-
-        const rejTargets = new Set();
-        if (callerId) rejTargets.add(callerId);
-        if (callerEmail) {
-          rejTargets.add(callerEmail);
-          rejTargets.add(callerEmail.toLowerCase());
-        }
-
-        const resolved = await resolveUserAndLawyerTargets(callerId || callerEmail);
-        resolved.forEach((t) => rejTargets.add(t));
-
-        rejTargets.forEach((cId) => {
-          io.to(cId).emit("call_rejected", {
-            receiverId: userId,
-            msg: "Call declined",
-            conversationId,
-          });
-        });
-      } catch (rejErr) {
-        console.error("Error in reject_call:", rejErr);
-      }
-    });
-
-    // 6. Media Toggle Sync (Mute / Camera Toggle)
-    socket.on("toggle_media", async ({ targetId, targetEmail, type, enabled }) => {
-      const toggleTargets = new Set();
-      if (targetId) toggleTargets.add(targetId);
-      if (targetEmail) {
-        toggleTargets.add(targetEmail);
-        toggleTargets.add(targetEmail.toLowerCase());
-      }
-
-      const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
-      resolved.forEach((t) => toggleTargets.add(t));
-
-      toggleTargets.forEach((tId) => {
-        io.to(tId).emit("peer_media_toggle", {
-          senderId: userId,
-          type,
-          enabled,
-        });
-      });
-    });
-
     // Disconnect Handler
     socket.on("disconnect", async () => {
+      for (const roomId of activeCallRooms) {
+        socket.leave(roomId);
+      }
+
       for (const id of userIdentifiers) {
         try {
           await removeFromRedisSet("online_users", id);
-          const activeCall = await getFromRedis(`active_call:${id}`);
-          if (activeCall) {
-            const peerId = activeCall.callerId === id ? activeCall.receiverId : activeCall.callerId;
-            if (peerId) {
-              io.to(peerId).emit("call_ended", { senderId: id });
-              await deleteFromRedis(`active_call:${peerId}`);
-            }
-            await deleteFromRedis(`active_call:${id}`);
-          }
         } catch (e) {
           console.log("Redis online_users remove error:", e);
         }
@@ -576,4 +619,3 @@ export const getIO = () => {
   }
   return io;
 };
-
