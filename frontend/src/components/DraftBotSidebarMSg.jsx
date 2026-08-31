@@ -1,3 +1,4 @@
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -5,104 +6,110 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useStore } from "../zustand/store";
 
 const DraftBotSidebarMsg = ({ msg }) => {
-    const { setLawyer, setPrint, setArticle } = useStore()
+    const { theme } = useStore();
+    const isDark = theme === "dark";
 
     return (
-        <div onClick={() => { getData() }} className="flex justify-start px-2 overflow-auto">
-            <div className="flex max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[90%] items-end gap-1 sm:gap-2">
-                <div className="px-3 sm:px-4 py-2 sm:py-3 rounded-2xl break-words bg-gray-200 text-gray-800 rounded-bl-none w-full">
-                    <div className="prose prose-sm sm:prose-base break-words max-w-none">
-                        <div
-                            className="mb-3 flex flex-col gap-2 w-full overflow-hidden"
-                        >
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                    code({ inline, className, children, ...props }) {
-                                        const match = /language-(\w+)/.exec(className || "");
-                                        const codeContent = String(children).replace(/\n$/, "");
+        <div className="flex justify-start px-1 sm:px-2 py-1 overflow-hidden w-full">
+            <div className="flex max-w-[95%] items-start gap-2">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shadow-xs shrink-0 mt-0.5">
+                    AV
+                </div>
 
-                                        const handleCopy = () =>
-                                            navigator.clipboard.writeText(codeContent);
+                <div className={`px-3.5 py-2.5 rounded-2xl border transition-colors ${
+                    isDark
+                        ? "bg-slate-900 border-slate-800 text-slate-200 shadow-md"
+                        : "bg-white border-slate-300 text-slate-900 shadow-sm"
+                } rounded-tl-xs w-full break-words`}>
+                    <div className="prose prose-xs sm:prose-sm max-w-none text-xs sm:text-sm leading-relaxed">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                code({ inline, className, children, ...props }) {
+                                    const match = /language-(\w+)/.exec(className || "");
+                                    const codeContent = String(children).replace(/\n$/, "");
 
-                                        return !inline && match ? (
-                                            <div className="relative my-3 w-[90%] overflow-hidden">
-                                                {/* Copy Button */}
-                                                <button
-                                                    onClick={handleCopy}
-                                                    className="absolute top-0 left-0 w-full bg-gray-800 text-white text-xs sm:text-sm py-1 rounded-t-lg hover:bg-gray-700 transition"
-                                                >
-                                                    Copy
-                                                </button>
+                                    const handleCopy = () =>
+                                        navigator.clipboard.writeText(codeContent);
 
-                                                {/* Syntax Highlighted Code */}
-                                                <SyntaxHighlighter
-                                                    style={vscDarkPlus}
-                                                    language={match[1]}
-                                                    PreTag="div"
-                                                    className="rounded-b-lg shadow-lg overflow-x-auto pt-6 text-xs sm:text-sm md:text-base"
-                                                    {...props}
-                                                >
-                                                    {codeContent}
-                                                </SyntaxHighlighter>
-                                            </div>
-                                        ) : (
-                                            <code
-                                                className="bg-gray-100 text-pink-600 px-1.5 py-0.5 rounded font-mono text-xs sm:text-sm"
+                                    return !inline && match ? (
+                                        <div className="relative my-2 w-full overflow-hidden rounded-xl border border-slate-700">
+                                            <button
+                                                onClick={handleCopy}
+                                                className="absolute top-0 right-0 bg-slate-800 text-white text-[10px] px-2.5 py-0.5 rounded-bl-lg hover:bg-slate-700 transition"
+                                            >
+                                                Copy
+                                            </button>
+                                            <SyntaxHighlighter
+                                                style={vscDarkPlus}
+                                                language={match[1]}
+                                                PreTag="div"
+                                                className="overflow-x-auto p-3 text-xs"
                                                 {...props}
                                             >
-                                                {children}
-                                            </code>
-                                        );
-                                    },
+                                                {codeContent}
+                                            </SyntaxHighlighter>
+                                        </div>
+                                    ) : (
+                                        <code
+                                            className={`px-1 py-0.5 rounded font-mono text-xs font-semibold border ${
+                                                isDark
+                                                    ? "bg-slate-800 border-slate-700 text-pink-400"
+                                                    : "bg-slate-100 border-slate-300 text-pink-700"
+                                            }`}
+                                            {...props}
+                                        >
+                                            {children}
+                                        </code>
+                                    );
+                                },
 
-                                    table({ children }) {
-                                        return (
-                                            <div className="overflow-x-auto my-2">
-                                                <table className="table-auto border-collapse border border-gray-300 rounded-lg w-full text-left text-xs sm:text-sm">
-                                                    {children}
-                                                </table>
-                                            </div>
-                                        );
-                                    },
-                                    thead({ children }) {
-                                        return (
-                                            <thead className="bg-gray-100 text-gray-700">
+                                table({ children }) {
+                                    return (
+                                        <div className="overflow-x-auto my-2 rounded-lg border border-slate-300 dark:border-slate-700">
+                                            <table className="table-auto border-collapse w-full text-left text-xs">
                                                 {children}
-                                            </thead>
-                                        );
-                                    },
-                                    td({ children }) {
-                                        return (
-                                            <td className="border border-gray-300 px-2 sm:px-3 py-1 sm:py-2">
-                                                {children}
-                                            </td>
-                                        );
-                                    },
-                                    th({ children }) {
-                                        return (
-                                            <th className="border border-gray-300 px-2 sm:px-3 py-1 sm:py-2 font-semibold">
-                                                {children}
-                                            </th>
-                                        );
-                                    },
-                                    a({ children, href }) {
-                                        return (
-                                            <a
-                                                href={href}
-                                                className="text-blue-800 hover:underline hover:text-blue-900 transition-colors break-words"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                {children}
-                                            </a>
-                                        );
-                                    },
-                                }}
-                            >
-                                {msg.content}
-                            </ReactMarkdown>
-                        </div>
+                                            </table>
+                                        </div>
+                                    );
+                                },
+                                thead({ children }) {
+                                    return (
+                                        <thead className={isDark ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-900 font-bold border-b border-slate-300"}>
+                                            {children}
+                                        </thead>
+                                    );
+                                },
+                                td({ children }) {
+                                    return (
+                                        <td className="border-b border-slate-200 dark:border-slate-800 px-2 py-1 text-slate-800 dark:text-slate-200">
+                                            {children}
+                                        </td>
+                                    );
+                                },
+                                th({ children }) {
+                                    return (
+                                        <th className="border-b border-slate-300 dark:border-slate-700 px-2 py-1 font-bold text-slate-900 dark:text-white">
+                                            {children}
+                                        </th>
+                                    );
+                                },
+                                a({ children, href }) {
+                                    return (
+                                        <a
+                                            href={href}
+                                            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            {children}
+                                        </a>
+                                    );
+                                },
+                            }}
+                        >
+                            {msg.content}
+                        </ReactMarkdown>
                     </div>
                 </div>
             </div>

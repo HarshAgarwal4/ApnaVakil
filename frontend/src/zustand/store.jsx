@@ -35,7 +35,27 @@ export const useStore = create((set, get) => ({
     lawyers: []
   },
   rightSideBarOpen: false,
-  setRightSideBarOpen: (rightSideBarOpen) => set({rightSideBarOpen}),
+  theme: typeof window !== "undefined" ? (localStorage.getItem("apnaVakil_theme") || "dark") : "dark",
+  setTheme: (theme) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("apnaVakil_theme", theme);
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.classList.add("light");
+        document.documentElement.classList.remove("dark");
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    }
+    set({ theme });
+  },
+  toggleTheme: () => {
+    const current = get().theme;
+    const next = current === "dark" ? "light" : "dark";
+    get().setTheme(next);
+  },
 
   /* ===================== SETTERS ===================== */
   setUser: (user) => set({ user }),
@@ -56,6 +76,7 @@ export const useStore = create((set, get) => ({
   setPrint: (print) => set({ print }),
   setShowPrintPage: (showPrintPage) => set({ showPrintPage }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setRightSideBarOpen: (rightSideBarOpen) => set({ rightSideBarOpen }),
   setDraft: (DraftMode) => set({ DraftMode }),
   setDraftChatHistory: (DraftChatHistory) => set({ DraftChatHistory }),
   setActiveDraft: (activeDraft) => {
@@ -213,8 +234,10 @@ export const useStore = create((set, get) => ({
   },
 
   initApp: () => {
-    const isMobile = window.innerWidth < 640
-    set({ sidebarOpen: !isMobile })
-    get().fetchUser()
+    const isMobile = window.innerWidth < 640;
+    set({ sidebarOpen: !isMobile });
+    const savedTheme = localStorage.getItem("apnaVakil_theme") || "dark";
+    get().setTheme(savedTheme);
+    get().fetchUser();
   },
 }))

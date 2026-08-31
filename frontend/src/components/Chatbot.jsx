@@ -12,7 +12,7 @@ import UserMsg from "./UserMsg";
 import { useStore } from "../zustand/store";
 
 const Chatbot = ({ disc, showdisc }) => {
-    const { history, showPrintPage, setShowPrintPage, setPrint, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, activeDraft, DraftMode, setUser, setIsPaid, setPlan, All_Histories, user } = useStore()
+    const { history, showPrintPage, setShowPrintPage, setPrint, print, setHistory, activeChat, setActiveChat, lawyer, setLawyer, article, setArticle, checkPlan, setShowPricingBox, activeDraft, DraftMode, setUser, setIsPaid, setPlan, All_Histories, user, theme } = useStore();
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [file, setFile] = useState(null);
@@ -217,57 +217,81 @@ const Chatbot = ({ disc, showdisc }) => {
         }
     };
 
+    const isDark = theme === "dark";
+
     return (
-        <div className="flex-1 relative flex flex-col  h-full">
+        <div className={`flex-1 relative flex flex-col h-full transition-colors duration-300 ${
+            isDark ? "bg-slate-950 text-slate-100" : "bg-[#eaf2f8] text-blue-950"
+        }`}>
 
             <div className="flex-1 space-y-6 p-4 md:p-6 overflow-y-auto">
 
                 {history.length === 0 && (
-                    <div className="flex flex-col items-center justify-center text-center mt-16 space-y-6">
+                    <div className="flex flex-col items-center justify-center text-center mt-12 sm:mt-16 space-y-6 max-w-2xl mx-auto">
 
-                        <img
-                            src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png"
-                            className="w-16 h-16"
-                            alt="bot"
-                        />
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 p-0.5 shadow-lg shadow-blue-900/10 flex items-center justify-center">
+                            <div className="w-full h-full bg-[#f0f6fc] dark:bg-slate-900 rounded-2xl flex items-center justify-center">
+                                <img
+                                    src="/logo.png"
+                                    className="w-10 h-10 object-contain"
+                                    alt="bot"
+                                />
+                            </div>
+                        </div>
 
                         <div>
-                            <h2 className="text-2xl font-semibold text-blue-900">
-                                Hello {user?.name || "there"} 👋
+                            <h2 className="text-2xl sm:text-3xl font-black text-blue-950 dark:text-white tracking-tight">
+                                Hello, {user?.name || "there"} 👋
                             </h2>
-                            <p className="text-gray-600 mt-2">
-                                How can your legal assistant help today?
+                            <p className="text-blue-900/70 dark:text-slate-400 mt-2 text-sm sm:text-base font-semibold">
+                                How can your AI legal assistant help you today?
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-xl w-full">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
 
                             <button
-                                onClick={() => setInput("What should I do if I receive a legal notice?")}
-                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                                onClick={() => setInput("What should I do if I receive a legal notice for cheque bounce?")}
+                                className={`p-3.5 text-left rounded-xl border text-xs sm:text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs ${
+                                    isDark
+                                        ? "bg-slate-900 border-slate-800 text-slate-200 hover:border-indigo-500 hover:bg-slate-800/80"
+                                        : "bg-[#f0f6fc] border-blue-300 text-blue-950 hover:border-blue-500 hover:bg-[#dcebf6]"
+                                }`}
                             >
-                                📄 What should I do if I receive a legal notice?
+                                📄 Notice for cheque bounce (Sec 138)
                             </button>
 
                             <button
-                                onClick={() => setInput("How can I file a consumer complaint in India?")}
-                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                                onClick={() => setInput("How can I file a consumer complaint under Consumer Protection Act 2019?")}
+                                className={`p-3.5 text-left rounded-xl border text-xs sm:text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs ${
+                                    isDark
+                                        ? "bg-slate-900 border-slate-800 text-slate-200 hover:border-indigo-500 hover:bg-slate-800/80"
+                                        : "bg-[#f0f6fc] border-blue-300 text-blue-950 hover:border-blue-500 hover:bg-[#dcebf6]"
+                                }`}
                             >
-                                ⚖️ How can I file a consumer complaint?
+                                ⚖️ Filing a consumer complaint
                             </button>
 
                             <button
-                                onClick={() => setInput("Explain FIR and how to file it")}
-                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                                onClick={() => setInput("Explain FIR procedures and zero FIR under Bharatiya Nagarik Suraksha Sanhita (BNSS)")}
+                                className={`p-3.5 text-left rounded-xl border text-xs sm:text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs ${
+                                    isDark
+                                        ? "bg-slate-900 border-slate-800 text-slate-200 hover:border-indigo-500 hover:bg-slate-800/80"
+                                        : "bg-[#f0f6fc] border-blue-300 text-blue-950 hover:border-blue-500 hover:bg-[#dcebf6]"
+                                }`}
                             >
-                                🚔 Explain FIR and how to file it
+                                🚔 Explain Zero FIR & BNSS 2023
                             </button>
 
                             <button
-                                onClick={() => setInput("What are my rights during police questioning?")}
-                                className="p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 text-sm"
+                                onClick={() => setInput("What are statutory tenant protections under Rent Control Acts?")}
+                                className={`p-3.5 text-left rounded-xl border text-xs sm:text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xs ${
+                                    isDark
+                                        ? "bg-slate-900 border-slate-800 text-slate-200 hover:border-indigo-500 hover:bg-slate-800/80"
+                                        : "bg-[#f0f6fc] border-blue-300 text-blue-950 hover:border-blue-500 hover:bg-[#dcebf6]"
+                                }`}
                             >
-                                🛡️ Rights during police questioning
+                                🛡️ Tenant eviction defense rules
                             </button>
 
                         </div>
@@ -284,18 +308,12 @@ const Chatbot = ({ disc, showdisc }) => {
                 )}
 
                 {isTyping && (
-                    <div className="flex items-end gap-3">
-                        <img
-                            src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png"
-                            alt="Bot Avatar"
-                            className="w-8 h-8 rounded-full"
-                        />
-                        <div className="px-4 py-3 rounded-2xl bg-gray-200 text-gray-800 rounded-bl-none">
-                            <div className="flex items-center space-x-1">
-                                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
-                                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse delay-75"></div>
-                                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse delay-150"></div>
-                            </div>
+                    <div className="flex items-center py-2 px-2 sm:px-4">
+                        <div className="flex items-center space-x-2 py-1">
+                            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce"></div>
+                            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce delay-100"></div>
+                            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce delay-200"></div>
+                            <span className="text-xs font-semibold text-blue-900/60 dark:text-slate-400 ml-1">AI Assistant is researching…</span>
                         </div>
                     </div>
                 )}
@@ -303,46 +321,116 @@ const Chatbot = ({ disc, showdisc }) => {
                 <div ref={chatEndRef} />
             </div>
 
-
             {filePreview && (
-                <div className="h-[10vh] bg-blue-50 rounded-lg">
+                <div className={`mx-3 sm:mx-6 mb-2 p-2 rounded-xl border flex items-center gap-3 ${
+                    isDark ? "bg-slate-900 border-slate-800" : "bg-[#f0f6fc] border-blue-300 shadow-sm"
+                }`}>
                     {file.type.startsWith("image/") ? (
-                        <div className="flex items-center gap-4 p-2 h-[100%]">
-                            <img src={filePreview} alt="preview" className="h-[100%] aspect-square rounded-lg border border-gray-300" />
-                            <p className="text-sm text-gray-700">📎 {file.name} ({Math.round(file.size / 1024)} KB)</p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-gray-700">📎 {file.name} ({Math.round(file.size / 1024)} KB)</p>
-                    )}
+                        <img src={filePreview} alt="preview" className="h-10 w-10 sm:h-12 sm:w-12 object-cover rounded-lg border border-blue-300 dark:border-slate-700" />
+                    ) : null}
+                    <p className="text-xs font-bold text-blue-950 dark:text-slate-300 truncate">
+                        📎 {file.name} ({Math.round(file.size / 1024)} KB)
+                    </p>
+                    <button
+                        onClick={() => { setFile(null); setFilePreview(null); }}
+                        className="ml-auto text-xs text-red-500 font-bold hover:underline px-2 cursor-pointer"
+                    >
+                        Remove
+                    </button>
                 </div>
             )}
 
-            <div className="px-6">
-                <div className="flex items-center bg-white border-2 border-gray-200 rounded-lg p-2 focus-within:border-blue-500 transition-all duration-300 **max-w-full**">
+            {/* Input Bar */}
+            <div className="px-2.5 sm:px-6 pb-2">
+                <div className={`flex items-center rounded-2xl p-1.5 sm:p-2 border-2 transition-all duration-200 shadow-lg ${
+                    isDark
+                        ? "bg-slate-900 border-slate-700 focus-within:border-indigo-500 shadow-black/40"
+                        : "bg-[#f4f9fd] border-blue-300 hover:border-blue-400 focus-within:border-blue-700 focus-within:ring-2 focus-within:ring-blue-100 shadow-blue-900/5"
+                }`}>
                     <textarea
                         ref={textareaRef}
                         value={input}
                         rows={1}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={wi === 'mobile' ? "press Shift + enter to send" : 'Ask me anything...'}
-                        className="w-full px-4 py-2 bg-transparent focus:outline-none resize-none"
+                        placeholder={wi === 'mobile' ? "Type legal query..." : "Ask any legal question under BNS, IPC, or Civil law..."}
+                        className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-transparent focus:outline-none resize-none text-xs sm:text-sm ${
+                            isDark ? "text-white placeholder-slate-500" : "text-blue-950 placeholder:text-blue-900/40 font-semibold"
+                        }`}
                         onKeyDown={handleKeyDown}
-                        style={{ minHeight: '48px' }}
+                        style={{ minHeight: '40px' }}
                     />
                     <input type="file" ref={fileInputRef} accept="image/*,application/pdf,.doc,.docx" className="hidden" onChange={handleFileChange} />
-                    <button className="p-2 text-gray-500 hover:text-blue-600" onClick={() => fileInputRef.current.click()}><PaperclipIcon /></button>
-                    <button className={`p-2 ${listening ? "text-red-500" : "text-gray-500"} hover:text-blue-600`} onClick={toggleListening}><MicIcon /></button>
-                    <button onClick={handleSendMessage} className="p-2 ml-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300" disabled={(!input.trim() && !file) || isTyping}><SendIcon /></button>
+                    
+                    <button
+                        type="button"
+                        className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${
+                            isDark
+                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                : "text-blue-900/70 hover:text-blue-950 hover:bg-[#e2edf7]"
+                        }`}
+                        onClick={() => fileInputRef.current.click()}
+                        title="Attach Document/Image"
+                    >
+                        <PaperclipIcon />
+                    </button>
+
+                    <button
+                        type="button"
+                        className={`p-1.5 sm:p-2 rounded-xl transition cursor-pointer ${
+                            listening
+                                ? "text-red-500 bg-red-50 dark:bg-red-950/40 animate-pulse"
+                                : isDark
+                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                : "text-blue-900/70 hover:text-blue-950 hover:bg-[#e2edf7]"
+                        }`}
+                        onClick={toggleListening}
+                        title="Voice Input"
+                    >
+                        <MicIcon />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleSendMessage}
+                        className="p-2 sm:p-2.5 ml-1 bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800 text-white rounded-xl hover:opacity-95 shadow-md shadow-blue-900/20 disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-95 shrink-0 cursor-pointer"
+                        disabled={(!input.trim() && !file) || isTyping}
+                    >
+                        <SendIcon />
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white border-t-1 mt-1 py-2">
-                <div onClick={() => { showdisc(!disc) }} className="mx-auto max-w-3xl rounded-lg border hover:cursor-pointer border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900 flex items-start gap-2">
-                    <span className="text-yellow-600">⚠️</span>
-                    <p>
-                        <strong>Apna Vakil</strong> provides general legal information only.
-                        This is <strong>not legal advice</strong>. Consult a qualified advocate for legal matters.
+            {/* Desktop Full Statutory Disclaimer Banner */}
+            <div className={`hidden md:block px-4 sm:px-6 py-2 border-t transition-colors ${
+                isDark ? "bg-slate-950 border-slate-800/80" : "bg-[#e2edf7] border-blue-200/90"
+            }`}>
+                <div
+                    onClick={() => showdisc(!disc)}
+                    className={`mx-auto max-w-4xl rounded-xl border p-2.5 text-xs flex items-start gap-2 cursor-pointer transition ${
+                        isDark
+                            ? "border-amber-800/60 bg-amber-950/30 text-amber-300 hover:bg-amber-950/50"
+                            : "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100/90 shadow-xs"
+                    }`}
+                >
+                    <span className="text-amber-500 shrink-0">⚖️</span>
+                    <p className="leading-relaxed">
+                        <strong>Statutory Notice:</strong> ApnaVakil provides legal information & AI-assisted research only under BCI Rule 36. This is <strong>not formal legal counsel</strong>. Consult verified advocates for active courtroom litigation.
                     </p>
+                </div>
+            </div>
+
+            {/* Mobile Compact Disclaimer Banner */}
+            <div className={`block md:hidden px-3 py-1.5 border-t transition-colors text-center ${
+                isDark ? "bg-slate-950 border-slate-800/80" : "bg-[#e2edf7] border-blue-200/90"
+            }`}>
+                <div
+                    onClick={() => showdisc(!disc)}
+                    className="inline-flex items-center justify-center gap-1.5 text-[10px] text-amber-800 dark:text-amber-300 hover:underline cursor-pointer font-semibold"
+                >
+                    <span>⚖️</span>
+                    <span>
+                        <strong>Statutory Disclaimer:</strong> AI research only under BCI Rule 36 • Not formal counsel • <u>Read Notice</u>
+                    </span>
                 </div>
             </div>
 

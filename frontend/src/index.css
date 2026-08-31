@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+    color-scheme: light dark;
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+html.light {
+    color-scheme: light;
+}
+
+body {
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
 pre code {
     background-color: #000;
     color: #fff;
@@ -12,6 +30,6 @@ pre code {
     font-size: 14px;
 }
 
-button{
+button {
     cursor: pointer;
 }

@@ -7,6 +7,8 @@ import ForgotPassword from "../pages/FgtPwd";
 import ProtectedRoute from "./Authentication";
 import { PaymentProtected } from "./PaidPage";
 import LawyersPage from "../pages/Lawyers";
+import LawyerDashboard from "../LawyerPanel/LawyerDashboard";
+import LawyerProfile from "../pages/LawyerProfile";
 import Disclaimer from "../pages/Disclaimer";
 import PrivacyPolicy from "../pages/PrivacyPolicy";
 import TermsAndConditions from "../pages/TermsOfService";
@@ -38,7 +40,24 @@ const router = createBrowserRouter([
             <PaymentProtected>
                 <LawyersPage />
             </PaymentProtected>
-
+        </ProtectedRoute>
+    },
+    {
+        path: '/lawyer/:id',
+        element: <ProtectedRoute>
+            <LawyerProfile />
+        </ProtectedRoute>
+    },
+    {
+        path: '/lawyer/dashboard',
+        element: <ProtectedRoute>
+            <LawyerDashboard />
+        </ProtectedRoute>
+    },
+    {
+        path: '/lawyer-panel',
+        element: <ProtectedRoute>
+            <LawyerDashboard />
         </ProtectedRoute>
     },
     {
@@ -53,6 +72,6 @@ const router = createBrowserRouter([
         path: '/terms-and-conditions',
         element: <TermsAndConditions />
     }
-])
+]);
 
-export default router
+export default router;

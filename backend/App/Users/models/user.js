@@ -19,8 +19,12 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "lawyer"],
       default: "user",
+    },
+    phone: {
+      type: String,
+      default: "",
     },
     plan:{
       type: String,
@@ -34,6 +38,11 @@ const UserSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       default: null,
+    },
+    agree: {
+      type: Boolean,
+      default: true,
+      required: true,
     }
   },
   { timestamps: true }
@@ -57,4 +66,5 @@ UserSchema.pre("save", async function (next) {
 
 const userModel = mongoose.model("User", UserSchema);
 
+export { userModel };
 export default userModel;

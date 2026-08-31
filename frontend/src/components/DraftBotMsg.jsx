@@ -90,6 +90,7 @@ const DraftBotMsg = ({ msg }) => {
         setDraftChatHistory,
         YourDrafts,
         setYourDrafts,
+        theme,
     } = useStore();
 
     const [loadingIndex, setLoadingIndex] = useState(null);
@@ -154,12 +155,28 @@ const DraftBotMsg = ({ msg }) => {
         }
     };
 
+    const isDark = theme === "dark";
+
     return (
         <div className="flex justify-start px-2 overflow-auto">
-            <div className="flex max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[90%] items-end gap-2">
-                <div className="px-3 sm:px-4 py-3 rounded-2xl bg-gray-200 text-gray-800 rounded-bl-none w-full">
+            <div className="flex max-w-[95%] items-end gap-2 w-full">
+                <div className={`p-4 sm:p-6 rounded-2xl border transition-colors w-full shadow-lg ${
+                    isDark
+                        ? "bg-slate-900 border-slate-800 text-slate-100 shadow-black/40"
+                        : "bg-[#f0f6fc] border-blue-200/90 text-blue-950 shadow-blue-900/5"
+                }`}>
+                    <div className="flex items-center justify-between pb-3 mb-4 border-b border-blue-200/90 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <h3 className="font-black text-sm uppercase tracking-wider text-blue-950 dark:text-white">
+                                Live Document Draft
+                            </h3>
+                        </div>
+                        <span className="text-[11px] text-blue-900/60 dark:text-slate-400 font-semibold">Click any block to edit</span>
+                    </div>
+
                     <div className="prose prose-sm sm:prose-base max-w-none">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col rounded-xl overflow-hidden border border-blue-200/90 dark:border-slate-800">
                             {blocks.map((block, index) => {
                                 const isActive = activeBlock === index;
                                 const isLoading = loadingIndex === index;
@@ -173,21 +190,25 @@ const DraftBotMsg = ({ msg }) => {
                                                 setActiveBlock(index);
                                             }
                                         }}
-                                        className={`px-3 py-3 border-b border-gray-300 transition cursor-pointer
+                                        className={`px-4 py-3.5 border-b last:border-b-0 border-blue-200/80 dark:border-slate-800 transition cursor-pointer
                                         ${isActive
-                                                ? "ring-2 ring-blue-400 bg-blue-50"
-                                                : "bg-white hover:bg-gray-50"
+                                                ? isDark
+                                                    ? "ring-2 ring-indigo-500 bg-indigo-950/40 text-indigo-100"
+                                                    : "ring-2 ring-blue-600 bg-blue-100/90 text-blue-950 font-bold"
+                                                : isDark
+                                                ? "bg-slate-900/60 hover:bg-slate-800/80 text-slate-200"
+                                                : "bg-[#f4f9fd] hover:bg-[#e2edf7] text-blue-950 font-medium"
                                             }
                                         ${isAnyEditing && !isActive ? "pointer-events-none opacity-60" : ""}
                                         `}
                                     >
                                         {/* -------- MARKDOWN BLOCK -------- */}
-                                        <div className="overflow-hidden min-h-[60px] relative">
+                                        <div className="overflow-hidden min-h-[50px] relative">
                                             {isLoading ? (
                                                 <div className="flex flex-col items-center justify-center h-20 gap-2">
-                                                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                                    <span className="text-xs text-gray-500">
-                                                        AI is editing...
+                                                    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="text-xs font-bold text-indigo-500">
+                                                        AI is revising block...
                                                     </span>
                                                 </div>
                                             ) : (
@@ -203,30 +224,38 @@ const DraftBotMsg = ({ msg }) => {
                                         {/* -------- INLINE EDITOR -------- */}
                                         {isActive && !isLoading && (
                                             <div
-                                                className="mt-3 border-t pt-3 flex flex-col gap-2"
+                                                className="mt-3 border-t border-indigo-200 dark:border-indigo-800/60 pt-3 flex flex-col gap-2"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <textarea
                                                     value={editMessage}
                                                     onChange={(e) => setEditMessage(e.target.value)}
-                                                    placeholder="Tell AI how to modify this section..."
-                                                    className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                                                    placeholder="Tell AI how to modify this section (e.g. 'Increase security deposit to 2 months')..."
+                                                    className={`w-full border-2 rounded-xl p-3 text-xs sm:text-sm focus:outline-none resize-none ${
+                                                        isDark
+                                                            ? "bg-slate-950 border-slate-700 text-white focus:border-indigo-500"
+                                                            : "bg-white border-slate-300 text-slate-900 focus:border-indigo-600 shadow-sm"
+                                                    }`}
                                                     rows={3}
                                                 />
 
                                                 <div className="flex justify-end gap-2">
                                                     <button
                                                         onClick={clearActiveBlock}
-                                                        className="px-3 py-1 text-sm rounded-lg bg-gray-200 hover:bg-gray-300"
+                                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition ${
+                                                            isDark
+                                                                ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+                                                                : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                                                        }`}
                                                     >
                                                         Cancel
                                                     </button>
 
                                                     <button
                                                         onClick={() => sendEdit(index, block)}
-                                                        className="px-4 py-1 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                                        className="px-4 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90 shadow-sm"
                                                     >
-                                                        Send
+                                                        Apply Revision
                                                     </button>
                                                 </div>
                                             </div>

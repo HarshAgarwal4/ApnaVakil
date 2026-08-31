@@ -214,3 +214,197 @@ async function getPayments(req, res) {
 }
 
 export { createOrder, verifyPayment, savePayment, getPayments };
+
+
+//subscription
+
+// import Razorpay from "razorpay";
+// import crypto from "crypto";
+// import dotenv from "dotenv";
+// import userModel from "../models/user.js";
+// import { paymentModel } from "../models/payment.js";
+// import { sendMail } from "../../../services/mail.js";
+// import { redis } from "../../../services/redis.js";
+
+// dotenv.config();
+
+// const razorpay = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_KEY_SECRET,
+// });
+
+
+// async function createOrder(req, res) {
+//     try {
+
+//         const subscription = await razorpay.subscriptions.create({
+//             plan_id: process.env.RAZORPAY_PLAN_ID,
+//             customer_notify: 1,
+//             total_count: 12,
+//             notes: {
+//                 userId: req.user._id,
+//                 email: req.user.email
+//             }
+//         });
+
+//         res.json({
+//             success: true,
+//             order: subscription
+//         });
+
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ success: false, error: "Failed to create subscription" });
+//     }
+// }
+
+
+
+// async function verifyPayment(req, res) {
+//     try {
+
+//         const { razorpay_payment_id, razorpay_signature, razorpay_subscription_id } = req.body;
+
+//         const body = razorpay_payment_id + "|" + razorpay_subscription_id;
+
+//         const expectedSignature = crypto
+//             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+//             .update(body.toString())
+//             .digest("hex");
+
+//         if (expectedSignature === razorpay_signature) {
+
+//             try {
+
+//                 let expiry = new Date(Date.now() + 10 * 1000);
+
+//                 let user = await userModel.findOneAndUpdate(
+//                     { _id: req.user._id },
+//                     { plan: 'Basic', expDate: expiry },
+//                     { new: true }
+//                 );
+
+//                 await redis.del(`user:${req.user._id}`);
+
+//                 const subscriptionEmail = (name, subId, paymentId, startDate, expiryDate, loginUrl) => `
+//                 <h2>Subscription Confirmation</h2>
+//                 <p>Hello ${name}</p>
+
+//                 <p>Your ApnaVakil Basic subscription is active.</p>
+
+//                 <p>Subscription ID : ${subId}</p>
+//                 <p>Payment ID : ${paymentId}</p>
+
+//                 <p>Plan : Basic</p>
+//                 <p>Amount : ₹20</p>
+
+//                 <p>Start : ${startDate}</p>
+//                 <p>Expiry : ${expiryDate}</p>
+
+//                 <a href="${loginUrl}">Login</a>
+//                 `;
+
+//                 const htmlContent = subscriptionEmail(
+//                     user.name,
+//                     razorpay_subscription_id,
+//                     razorpay_payment_id,
+//                     new Date().toLocaleDateString(),
+//                     expiry.toLocaleDateString(),
+//                     process.env.FRONTEND_URL + "/login"
+//                 );
+
+//                 await sendMail(
+//                     req.user.email,
+//                     "ApnaVakil: Your Monthly Subscription is Confirmed",
+//                     htmlContent
+//                 );
+
+//             } catch (err) {
+//                 console.log(err);
+//                 return res.status(400).json({ success: false, message: "Invalid signature" });
+//             }
+
+//             return res.json({ success: true, message: "Payment verified successfully" });
+
+//         } else {
+//             return res.status(400).json({ success: false, message: "Invalid signature" });
+//         }
+
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ success: false, error: "Verification failed" });
+//     }
+// }
+
+
+
+// async function savePayment(req, res) {
+
+//     let userId = req.user._id;
+//     let email = req.user.email;
+
+//     let { plan, amount, paymentId, orderId, signature } = req.body;
+
+//     let expiryDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
+
+//     try {
+
+//         let payment = new paymentModel({
+//             userId,
+//             email,
+//             plan,
+//             amount,
+//             paymentId,
+//             orderId,
+//             signature,
+//             expiryDate
+//         });
+
+//         await payment.save();
+
+//         res.send({
+//             status: 1,
+//             message: "Payment saved successfully"
+//         });
+
+//     } catch (err) {
+
+//         console.log(err);
+
+//         res.send({
+//             status: 0,
+//             message: "Error in saving payment"
+//         });
+
+//     }
+// }
+
+
+
+// async function getPayments(req, res) {
+
+//     let userId = req.user._id;
+
+//     try {
+
+//         let payments = await paymentModel.find({ userId });
+
+//         res.send({
+//             status: 1,
+//             payments
+//         });
+
+//     } catch (err) {
+
+//         console.log(err);
+
+//         res.send({
+//             status: 0,
+//             message: "Error in fetching payments"
+//         });
+
+//     }
+// }
+
+
+// export { createOrder, verifyPayment, savePayment, getPayments };

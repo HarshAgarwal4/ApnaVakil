@@ -16,14 +16,28 @@ const uploadFile = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // optional: max 5MB
 });
 
-async function uploadFileToCloud(filePath) {
+async function uploadFileToCloud(filePath, originalFilename = "") {
   try {
-    const result = await cloudinary.v2.uploader.upload(filePath, {
-      folder: "APNA_VAKIL",
-      resource_type: "auto",
-      allowed_formats: ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx"],
-    });
+    const ext = path.extname(filePath).toLowerCase();
+    const isImage = [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext);
+
+    const options = {
+      folder: "APNA_VAKIL_CHAT",
+      resource_type: isImage ? "image" : "auto",
+      use_filename: true,
+      unique_filename: true,
+    };
+
+    const result = await cloudinary.v2.uploader.upload(filePath, options);
     console.log("Uploaded to Cloudinary:", result.secure_url);
+
+    // Clean up local temp file after cloud upload
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (e) {}
+
     return result;
   } catch (error) {
     console.error("Cloudinary upload failed:", error);

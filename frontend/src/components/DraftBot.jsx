@@ -35,9 +35,9 @@ const Draftbot = ({ disc, showdisc }) => {
     // }, [])
 
     return (
-        <div className="flex-1 relative flex flex-col  h-full">
+        <div className="flex-1 relative flex flex-col h-full bg-[#eaf2f8] dark:bg-slate-950 text-blue-950 dark:text-slate-100 transition-colors">
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                <span className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold text-slate-400/20 tracking-widest text-center px-4">
+                <span className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold text-blue-900/5 dark:text-slate-400/20 tracking-widest text-center px-4">
                     Drafts Mode
                 </span>
             </div>
@@ -50,14 +50,26 @@ const Draftbot = ({ disc, showdisc }) => {
                     <DraftChat />
                 </div>
             </div>
-            {/* Disclaimer */}
-            <div className="bg-white border-t-1 mt-1 py-2">
-                <div onClick={() => { showdisc(!disc) }} className="mx-auto max-w-3xl rounded-lg border hover:cursor-pointer border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900 flex items-start gap-2">
-                    <span className="text-yellow-600">⚠️</span>
-                    <p>
-                        <strong>Apna Vakil</strong> provides general legal information only.
-                        This is <strong>not legal advice</strong>. Consult a qualified advocate for legal matters.
+            {/* Desktop Full Statutory Disclaimer */}
+            <div className="hidden md:block bg-[#e2edf7] dark:bg-slate-950 border-t border-blue-200/90 dark:border-slate-800 py-2.5 px-4">
+                <div onClick={() => { showdisc(!disc) }} className="mx-auto max-w-4xl rounded-xl border hover:cursor-pointer border-amber-300 bg-amber-50 px-4 py-2.5 text-xs text-amber-950 flex items-start gap-2 shadow-xs transition hover:bg-amber-100/90 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+                    <span className="text-amber-500 shrink-0">⚖️</span>
+                    <p className="leading-relaxed">
+                        <strong>Statutory Notice:</strong> ApnaVakil provides legal document templates & AI drafting assistance. Review all drafted clauses with a qualified advocate before formal execution.
                     </p>
+                </div>
+            </div>
+
+            {/* Mobile Compact Disclaimer */}
+            <div className="block md:hidden bg-[#e2edf7] dark:bg-slate-950 border-t border-blue-200/90 dark:border-slate-800 py-1.5 px-3 text-center">
+                <div
+                    onClick={() => showdisc(!disc)}
+                    className="inline-flex items-center justify-center gap-1.5 text-[10px] text-amber-800 dark:text-amber-300 hover:underline cursor-pointer font-semibold"
+                >
+                    <span>⚖️</span>
+                    <span>
+                        <strong>Statutory Disclaimer:</strong> AI draft templates • Verify clauses before execution • <u>Read Notice</u>
+                    </span>
                 </div>
             </div>
 

@@ -37,7 +37,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="h-screen flex font-[Inter] bg-gray-100">
+        <div className="h-screen flex font-[Inter] bg-[#eaf2f8] dark:bg-slate-950 text-blue-950 dark:text-slate-100 transition-colors duration-300">
             {sidebarOpen && <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
             {showPricingBox && <PricingBox />}
             <PrintDialog />

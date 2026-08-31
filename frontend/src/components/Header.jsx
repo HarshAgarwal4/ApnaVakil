@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../zustand/store';
 import { Search } from 'lucide-react';
 import ConsultationModal from './LawyerModal';
+import UserConnectionsModal from './UserConnectionsModal';
 import { FaBars } from "react-icons/fa";
 import { BsThreeDotsVertical } from "react-icons/bs";
+import ThemeToggle from './ThemeToggle';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ const Header = () => {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showConnectionsModal, setShowConnectionsModal] = useState(false);
 
   const {
     showPricingBox,
@@ -24,7 +27,8 @@ const Header = () => {
     setDraft,
     Lawyers,
     rightSideBarOpen,
-    setRightSideBarOpen
+    setRightSideBarOpen,
+    theme
   } = useStore();
 
   const [search, setSearch] = useState("");
@@ -56,17 +60,20 @@ const Header = () => {
     setBox(filtered || []);
   }, [search, mode, Lawyers]);
 
+  const isDark = theme === "dark";
+
   return (
-    <header className="flex justify-between items-center px-6 py-3 bg-white border-b border-blue-100 shadow-sm relative z-[100]">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-[#f0f6fc] dark:bg-slate-900 border-b border-blue-200/90 dark:border-slate-800 shadow-sm relative z-[100] transition-colors duration-300">
 
       {/* LEFT */}
       <div className='flex items-center gap-3'>
-        <div onClick={() => setSidebarOpen(!sidebarOpen)} className="cursor-pointer">
-          <FaBars size={24} />
+        <div onClick={() => setSidebarOpen(!sidebarOpen)} className="cursor-pointer text-blue-950 dark:text-slate-200 hover:text-blue-700 transition-colors p-1">
+          <FaBars size={20} />
         </div>
 
-        <h2 className="text-sm sm:text-md md:text-lg font-semibold text-blue-900 tracking-wide">
-          Apna Vakil
+        <h2 className="text-base sm:text-lg font-black text-blue-950 dark:text-white tracking-tight flex items-center gap-1.5">
+          <span>Apna</span>
+          <span className="bg-gradient-to-r from-blue-700 to-indigo-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">Vakil</span>
         </h2>
       </div>
 
@@ -80,33 +87,33 @@ const Header = () => {
           />
         )}
 
-        <div className="hidden md:flex items-center bg-blue-50 border border-blue-200 rounded-full px-5 py-2 w-[40vw] focus-within:ring-2 focus-within:ring-blue-900 transition-all">
+        <div className="hidden md:flex items-center bg-[#e4eff8] dark:bg-slate-800/80 border border-blue-200 dark:border-slate-700 rounded-full px-5 py-2 w-[35vw] focus-within:ring-2 focus-within:ring-blue-600 focus-within:border-blue-600 transition-all shadow-xs">
 
-          <div className="h-5 w-px bg-blue-200 mr-4"></div>
+          <div className="h-4 w-px bg-blue-300 dark:bg-slate-600 mr-3"></div>
 
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={`Search ${mode}...`}
-            className="flex-1 bg-transparent outline-none text-sm text-blue-900 placeholder:text-blue-400"
+            className="flex-1 bg-transparent outline-none text-sm text-blue-950 dark:text-slate-100 placeholder:text-blue-900/50 dark:placeholder:text-slate-500 font-semibold"
           />
 
-          <Search size={18} className="ml-3 text-blue-600" />
+          <Search size={18} className="ml-3 text-blue-700 dark:text-indigo-400" />
         </div>
 
         {mode === "lawyers" && search && (
-          <div className="absolute mt-2 w-[40vw] bg-white border border-blue-100 rounded-xl shadow-xl max-h-64 overflow-y-auto z-50">
+          <div className="absolute mt-2 w-[35vw] bg-[#f0f6fc] dark:bg-slate-900 border border-blue-300 dark:border-slate-700 rounded-2xl shadow-2xl max-h-64 overflow-y-auto z-50 p-1">
 
             {box.length === 0 ? (
-              <div className="p-4 text-sm text-slate-500">
-                No Lawyers found
+              <div className="p-4 text-xs font-bold text-blue-900/60 dark:text-slate-400 text-center">
+                No advocates found matching "{search}"
               </div>
             ) : (
               box.map((itm) => (
                 <div
                   key={itm._id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer transition"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#e2edf7] dark:hover:bg-slate-800 cursor-pointer transition"
                   onClick={() => {
                     setCurrentLawyer(itm);
                     setShowModal(true);
@@ -115,11 +122,11 @@ const Header = () => {
                   }}
                 >
                   <img
-                    src={itm.images}
+                    src={itm.images || "/logo.png"}
                     alt={itm.name}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-8 h-8 rounded-full object-cover border border-blue-200 dark:border-slate-700"
                   />
-                  <span className="text-sm text-blue-900 font-medium">
+                  <span className="text-xs font-bold text-blue-950 dark:text-slate-100">
                     {itm.name}
                   </span>
                 </div>
@@ -132,20 +139,33 @@ const Header = () => {
       </div>
 
       {/* DESKTOP RIGHT BUTTONS */}
-      <div className='hidden md:flex gap-4 items-center'>
+      <div className='hidden md:flex gap-2.5 items-center'>
+
+        {/* Lawyer Panel Button for Advocates */}
+        {user?.role === "lawyer" && (
+          <button
+            onClick={() => navigate('/lawyer/dashboard')}
+            className='px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5'
+          >
+            <span>⚖️ Lawyer Panel</span>
+          </button>
+        )}
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         <button
           onClick={toggleDraft}
-          className='px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 text-sm transition'
+          className='px-4 py-2 bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800 hover:opacity-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-900/20 transition-all cursor-pointer'
         >
-          {DraftMode ? "ChatBot" : "Drafts"}
+          {DraftMode ? "🤖 ChatBot" : "📄 AI Drafter"}
         </button>
 
         <button
           onClick={() => navigate('/lawyers')}
-          className='px-4 py-2 border border-blue-900 text-blue-900 rounded-lg hover:bg-blue-50 text-sm transition'
+          className='px-3.5 py-2 border border-blue-200 dark:border-slate-700 text-blue-950 dark:text-slate-200 bg-[#e4eff8] dark:bg-slate-800 hover:bg-[#d5e6f5] dark:hover:bg-slate-700 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer'
         >
-          Lawyers
+          Advocates
         </button>
 
         {/* PROFILE DROPDOWN */}
@@ -153,22 +173,44 @@ const Header = () => {
 
           <div
             onClick={() => setProfileOpen(!profileOpen)}
-            className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg cursor-pointer hover:bg-blue-100 text-sm text-blue-900 transition"
+            className="px-3.5 py-2 bg-[#e4eff8] dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-[#d5e6f5] dark:hover:bg-slate-700 text-xs sm:text-sm font-bold text-blue-950 dark:text-slate-200 transition"
           >
             {user?.name || "User"}
           </div>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-52 bg-white border border-blue-100 rounded-xl shadow-xl z-50">
+            <div className="absolute right-0 mt-2 w-52 bg-[#f0f6fc] dark:bg-slate-900 border border-blue-300 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden py-1">
+
+              {user?.role === "lawyer" && (
+                <button
+                  onClick={() => {
+                    navigate('/lawyer/dashboard');
+                    setProfileOpen(false);
+                  }}
+                  className="block w-full text-left px-4 py-2.5 text-emerald-700 dark:text-emerald-400 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-bold border-b border-blue-200 dark:border-slate-800"
+                >
+                  ⚖️ Advocate Dashboard
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowConnectionsModal(true);
+                  setProfileOpen(false);
+                }}
+                className="block w-full text-left px-4 py-2.5 text-blue-950 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-bold"
+              >
+                🤝 My Advocate Connections
+              </button>
 
               <button
                 onClick={() => {
                   setShowPricingBox(!showPricingBox);
                   setProfileOpen(false);
                 }}
-                className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 rounded-t-xl transition"
+                className="block w-full text-left px-4 py-2.5 text-blue-950 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-bold"
               >
-                Subscription
+                ⭐ Subscription Plan
               </button>
 
               <button
@@ -176,9 +218,9 @@ const Header = () => {
                   logout();
                   setProfileOpen(false);
                 }}
-                className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-xl transition"
+                className="block w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border-t border-blue-200 dark:border-slate-800 transition text-xs font-bold"
               >
-                Logout
+                🚪 Logout
               </button>
 
             </div>
@@ -188,47 +230,90 @@ const Header = () => {
 
       </div>
 
-      {/* MOBILE THREE DOT MENU */}
-      <div className="md:hidden relative">
+      {/* MOBILE THREE DOT MENU & PANEL TOGGLE */}
+      <div className="md:hidden relative flex items-center gap-1.5 sm:gap-2">
 
-        <div className='flex justify-center gap-2'>
+        <ThemeToggle />
+
+        <div className='flex justify-center gap-1.5 sm:gap-2 items-center'>
 
           {DraftMode ? (
             <button
-              onClick={() => setRightSideBarOpen(!rightSideBarOpen)}
-              className='btn'
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRightSideBarOpen(!rightSideBarOpen);
+              }}
+              className='px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-700 hover:bg-blue-800 text-white shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition'
             >
-              View Draft
+              <span>📄 Doc</span>
             </button>
           ) : (
             <button
-              onClick={() => setRightSideBarOpen(!rightSideBarOpen)}
-              className='btn'
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRightSideBarOpen(!rightSideBarOpen);
+              }}
+              className='px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl bg-[#dcebf6] dark:bg-slate-800 border border-blue-300 dark:border-slate-700 text-blue-950 dark:text-slate-200 hover:bg-[#cee2f1] dark:hover:bg-slate-700 shadow-xs cursor-pointer flex items-center gap-1 active:scale-95 transition'
             >
-              Panel
+              <span>⚖️ Panel</span>
             </button>
           )}
 
           <button
+            type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2"
+            className="p-2 rounded-xl text-blue-950 dark:text-slate-200 hover:bg-[#dcebf6] dark:hover:bg-slate-800 border border-blue-300 dark:border-slate-700 transition cursor-pointer"
+            aria-label="Menu"
           >
-            {menuOpen ? "❌" : <BsThreeDotsVertical size={22} />}
+            <BsThreeDotsVertical size={16} />
           </button>
 
         </div>
 
         {menuOpen && (
-          <div className="absolute right-0 mt-2 w-52 bg-white border border-blue-100 rounded-xl shadow-xl z-50">
+          <div className="absolute right-0 top-12 w-56 bg-[#f0f6fc] dark:bg-slate-900 border border-blue-300 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden py-1">
+
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+              <span>{user?.name || "ApnaVakil User"}</span>
+              {user?.role === "lawyer" && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  Advocate
+                </span>
+              )}
+            </div>
+
+            {user?.role === "lawyer" && (
+              <button
+                onClick={() => {
+                  navigate('/lawyer/dashboard');
+                  setMenuOpen(false);
+                }}
+                className="block w-full text-left px-4 py-2.5 text-emerald-700 dark:text-emerald-400 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-bold"
+              >
+                ⚖️ Advocate Dashboard
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setShowConnectionsModal(true);
+                setMenuOpen(false);
+              }}
+              className="block w-full text-left px-4 py-2.5 text-slate-800 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-medium"
+            >
+              🤝 My Lawyer Inquiries
+            </button>
 
             <button
               onClick={() => {
                 toggleDraft();
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
+              className="block w-full text-left px-4 py-2.5 text-slate-800 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-medium"
             >
-              {DraftMode ? "ChatBot" : "Drafts"}
+              {DraftMode ? "🤖 Switch to ChatBot" : "📄 Switch to Drafts"}
             </button>
 
             <button
@@ -236,9 +321,9 @@ const Header = () => {
                 navigate('/lawyers');
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
+              className="block w-full text-left px-4 py-2.5 text-slate-800 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-medium"
             >
-              Lawyers
+              👨‍⚖️ Verified Advocates
             </button>
 
             <button
@@ -246,9 +331,9 @@ const Header = () => {
                 setShowPricingBox(!showPricingBox);
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-3 text-blue-900 hover:bg-blue-50 transition"
+              className="block w-full text-left px-4 py-2.5 text-slate-800 dark:text-slate-200 hover:bg-[#e2edf7] dark:hover:bg-slate-800 transition text-xs font-medium"
             >
-              Subscription
+              ⭐ Subscription Plans
             </button>
 
             <button
@@ -256,15 +341,21 @@ const Header = () => {
                 logout();
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-xl transition"
+              className="block w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 border-t border-blue-200 dark:border-slate-800 transition text-xs font-bold"
             >
-              Logout
+              🚪 Logout
             </button>
 
           </div>
         )}
 
       </div>
+
+      {/* User Connections Modal */}
+      <UserConnectionsModal
+        isOpen={showConnectionsModal}
+        onClose={() => setShowConnectionsModal(false)}
+      />
 
     </header>
   );

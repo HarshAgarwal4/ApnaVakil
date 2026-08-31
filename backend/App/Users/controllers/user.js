@@ -4,10 +4,11 @@ import { sendOTPEmail, verifyOTP } from "../../../services/otp.js";
 import dotenv from 'dotenv'
 dotenv.config()
 import userModel from "../models/user.js";
+import lawyerModel from "../../Admin/models/lawyers.js";
 import { redis } from "../../../services/redis.js";
 
 async function saveUser(req, res) {
-    let { name, email, password, otp } = req.body;
+    let { name, email, password, otp, agree, isLawyer, role } = req.body;
     if (!name || !email || !password || !otp) {
         return res.send({ status: 7, msg: "Invalid fields" });
     }
@@ -17,18 +18,51 @@ async function saveUser(req, res) {
         console.log(otpResult)
         if (!otpResult) return res.send({ status: 10, msg: "Invalid OTP" });
         else {
-            let obj = { name, email, password };
+            const userRole = (isLawyer || role === "lawyer") ? "lawyer" : "user";
+            let obj = {
+                name,
+                email,
+                password,
+                role: userRole,
+                agree: agree !== undefined ? Boolean(agree) : true
+            };
             const newUser = new userModel(obj)
             let token = await setuser(newUser)
             newUser.refreshToken = token
             await newUser.save();
+
+            // If user signed up as lawyer, create an initial lawyer entry
+            if (userRole === "lawyer") {
+                try {
+                    let existingLawyer = await lawyerModel.findOne({ email });
+                    if (!existingLawyer) {
+                        const newLawyer = new lawyerModel({
+                            userId: newUser._id,
+                            name,
+                            email,
+                            phone: "",
+                            desc: `Advocate ${name}, verified legal professional available for consultation.`,
+                            categories: ["Civil Law", "Corporate Law", "Litigation"],
+                            speciality: "Advocate & Legal Advisor",
+                            experience: "5+ Years",
+                            fee: "₹1,500 / consultation",
+                            verified: true
+                        });
+                        await newLawyer.save();
+                    }
+                } catch (e) {
+                    console.log("Error creating initial lawyer record:", e);
+                }
+            }
+
+            await redis.set(`user:${newUser._id}`, JSON.stringify(newUser))
             res.cookie('UID', token, {
                 httpOnly: process.env.production === "true",
                 secure: process.env.production === "true",
                 sameSite: process.env.production === "true" ? 'none' : 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
             })
-            return res.send({ status: 1, msg: "User created successfully" });
+            return res.send({ status: 1, msg: "User created successfully", role: userRole });
         }
     } catch (err) {
         console.log(err);

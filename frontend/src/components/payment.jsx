@@ -51,16 +51,22 @@ export default function PricingBox() {
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-                amount: order.amount,
+                amount: order.amount,                // remove amount currency in subscription
                 currency: order.currency,
                 name: "Apna Vakil",
                 description: "Basic Plan Purchase",
-                order_id: order.id,
+                order_id: order.id,           //order id  -> subscription id
+                //subscription_id: order.id,
                 handler: async (response) => {
                     const verifyRes = await axios.post("/verifyPayment", response);
+                    // const verifyRes = await axios.post("/verifyPayment", {
+                    //     razorpay_payment_id: response.razorpay_payment_id,
+                    //     razorpay_subscription_id: response.razorpay_subscription_id,
+                    //     razorpay_signature: response.razorpay_signature
+                    // });
                     if (verifyRes.data.success) {
                         alert("Payment successful!");
-                        let a = {...user,plan:"Basic"}
+                        let a = { ...user, plan: "Basic" }
                         setUser(a);
                         setShowPricingBox(false);
                         setIsPaid(true);
@@ -75,6 +81,7 @@ export default function PricingBox() {
                                     plan: "Basic",
                                     paymentId: response.razorpay_payment_id,
                                     orderId: response.razorpay_order_id,
+                                    //orderId: response.razorpay_subscription_id,             // in subscription
                                     signature: response.razorpay_signature,
                                 });
 
@@ -127,7 +134,7 @@ export default function PricingBox() {
 
                 <div className="border-t border-b border-gray-100 py-6 mb-6">
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800">₹20</h2>
-                    <p className="text-gray-500 mt-2 text-sm sm:text-base">One-time access</p>
+                    <p className="text-gray-500 mt-2 text-sm sm:text-base">₹20 / month</p>
                 </div>
 
                 <ul className="text-gray-600 text-sm sm:text-base space-y-2 mb-6 text-left px-4 sm:px-8">
@@ -197,11 +204,10 @@ export default function PricingBox() {
                                                 <td className="py-2 px-2 sm:px-4">₹{p.amount}</td>
                                                 <td className="py-2 px-2 sm:px-4">{p.plan}</td>
                                                 <td
-                                                    className={`py-2 px-2 sm:px-4 font-medium ${
-                                                        p.status === "paid"
+                                                    className={`py-2 px-2 sm:px-4 font-medium ${p.status === "paid"
                                                             ? "text-green-600"
                                                             : "text-red-500"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {new Date(Number(p.expiryDate)).toLocaleDateString()}
                                                 </td>

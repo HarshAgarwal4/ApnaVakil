@@ -1,29 +1,32 @@
-import { RouterProvider } from "react-router-dom"
-import router from "./services/Routes"
-import { ToastContainer } from 'react-toastify'
-import './toast.css'
-import { useStore } from "./zustand/store"
-import { useEffect } from "react"
+import { RouterProvider } from "react-router-dom";
+import router from "./services/Routes";
+import { ToastContainer } from "react-toastify";
+import "./toast.css";
+import { useStore } from "./zustand/store";
+import { useEffect } from "react";
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
+import GlobalCallManager from "./components/GlobalCallManager";
 
 function App() {
-  const {initApp, user , fetchHistory , fetchDrafts ,checkPlan , fetchLawyers} = useStore()
+  const { initApp, user, fetchHistory, fetchDrafts, checkPlan, fetchLawyers } = useStore();
 
   useEffect(() => {
-    initApp()
-  } ,[])
-
+    initApp();
+  }, []);
 
   useEffect(() => {
-    fetchHistory()
-    fetchDrafts()
+    fetchHistory();
+    fetchDrafts();
     if (checkPlan()) {
-      fetchLawyers()
+      fetchLawyers();
     }
-  },[user])
+  }, [user]);
 
   return (
     <>
       <RouterProvider router={router} />
+      <GlobalCallManager />
+      <PwaInstallPrompt />
       <ToastContainer
         position="top-center"
         autoClose={3000}
@@ -31,7 +34,7 @@ function App() {
         newestOnTop={false}
       />
     </>
-  )
+  );
 }
 
-export default App
+export default App;
