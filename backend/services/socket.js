@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import { MessageModel } from "../App/Users/models/Message.js";
 import lawyerModel from "../App/Admin/models/lawyers.js";
+import userModel from "../App/Users/models/user.js";
 import {
   addToRedisSet,
   removeFromRedisSet,
@@ -13,6 +14,61 @@ import {
 } from "./redis.js";
 
 let io = null;
+
+// Helper to resolve all associated room identifiers (userId, lawyer profile _id, case-insensitive emails)
+async function resolveUserAndLawyerTargets(identifierOrEmail) {
+  if (!identifierOrEmail) return [];
+  const targets = new Set();
+  const idStr = identifierOrEmail.toString().trim();
+  targets.add(idStr);
+  if (idStr.includes("@")) {
+    targets.add(idStr.toLowerCase());
+  }
+
+  try {
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(idStr);
+    const query = [];
+    if (isObjectId) {
+      query.push({ _id: idStr });
+      query.push({ userId: idStr });
+    }
+    if (idStr.includes("@")) {
+      query.push({ email: { $regex: new RegExp(`^${idStr}$`, "i") } });
+    }
+
+    if (query.length > 0) {
+      const [lawyer, user] = await Promise.all([
+        lawyerModel.findOne({ $or: query }).lean().catch(() => null),
+        userModel.findOne({
+          $or: isObjectId
+            ? [{ _id: idStr }, ...(idStr.includes("@") ? [{ email: { $regex: new RegExp(`^${idStr}$`, "i") } }] : [])]
+            : [{ email: { $regex: new RegExp(`^${idStr}$`, "i") } }],
+        }).lean().catch(() => null),
+      ]);
+
+      if (lawyer) {
+        if (lawyer._id) targets.add(lawyer._id.toString());
+        if (lawyer.userId) targets.add(lawyer.userId.toString());
+        if (lawyer.email) {
+          targets.add(lawyer.email);
+          targets.add(lawyer.email.toLowerCase());
+        }
+      }
+
+      if (user) {
+        if (user._id) targets.add(user._id.toString());
+        if (user.email) {
+          targets.add(user.email);
+          targets.add(user.email.toLowerCase());
+        }
+      }
+    }
+  } catch (err) {
+    console.log("Error resolving targets:", err);
+  }
+
+  return [...targets];
+}
 
 export const initSocket = (httpServer, corsOptions) => {
   io = new Server(httpServer, {
@@ -28,36 +84,38 @@ export const initSocket = (httpServer, corsOptions) => {
     const userRole = socket.handshake.query.role || "user";
     const userEmail = socket.handshake.query.email || "";
 
-    const userIdentifiers = [userId, userEmail].filter(Boolean);
-
-    // If connected party is a lawyer or has lawyer profile, also join lawyer profile ID
-    if (userEmail || userId) {
-      try {
-        const queryOr = [];
-        if (userEmail) queryOr.push({ email: userEmail });
-        if (userId && userId.match(/^[0-9a-fA-F]{24}$/)) queryOr.push({ userId: userId });
-
-        if (queryOr.length > 0) {
-          const matchedLawyer = await lawyerModel.findOne({ $or: queryOr }).lean();
-          if (matchedLawyer && matchedLawyer._id) {
-            userIdentifiers.push(matchedLawyer._id.toString());
-          }
-        }
-      } catch (err) {
-        console.log("Lawyer profile lookup error on socket connect:", err);
+    const joinUserRooms = async (uId, uEmail) => {
+      const roomsToJoin = new Set();
+      if (uId) roomsToJoin.add(uId.toString().trim());
+      if (uEmail) {
+        roomsToJoin.add(uEmail.toString().trim());
+        roomsToJoin.add(uEmail.toString().trim().toLowerCase());
       }
-    }
 
-    if (userIdentifiers.length > 0) {
-      for (const id of [...new Set(userIdentifiers)]) {
-        socket.join(id);
+      if (uId) {
+        const resolvedId = await resolveUserAndLawyerTargets(uId);
+        resolvedId.forEach((r) => roomsToJoin.add(r));
+      }
+      if (uEmail) {
+        const resolvedEmail = await resolveUserAndLawyerTargets(uEmail);
+        resolvedEmail.forEach((r) => roomsToJoin.add(r));
+      }
+
+      for (const room of roomsToJoin) {
+        socket.join(room);
         try {
-          await addToRedisSet("online_users", id);
+          await addToRedisSet("online_users", room);
         } catch (e) {
           console.log("Redis online_users add error:", e);
         }
       }
 
+      return [...roomsToJoin];
+    };
+
+    const userIdentifiers = await joinUserRooms(userId, userEmail);
+
+    if (userIdentifiers.length > 0) {
       // 2. Broadcast online status to all connected users
       io.emit("user_status_change", {
         userId,
@@ -90,6 +148,13 @@ export const initSocket = (httpServer, corsOptions) => {
         console.error("Error updating delivered messages on connect:", delivErr);
       }
     }
+
+    // Explicit User Registration from Client
+    socket.on("register_user", async ({ userId: regUserId, email: regEmail }) => {
+      if (regUserId || regEmail) {
+        await joinUserRooms(regUserId, regEmail);
+      }
+    });
 
     // Query Online Status of Users from Redis
     socket.on("get_online_status", async (data, callback) => {
@@ -246,7 +311,7 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     // ==========================================
-    // 🎥 WEBRTC 1-ON-1 AUDIO & VIDEO CALLING (REDIS ONLY - NO DB)
+    // 🎥 WEBRTC 1-ON-1 AUDIO & VIDEO CALLING
     // ==========================================
 
     // 1. Call Initiation
@@ -294,14 +359,23 @@ export const initSocket = (httpServer, corsOptions) => {
           createdAt: Date.now(),
         };
 
-        // Cache call in Redis with 2-minute ringing TTL (No DB storage!)
+        // Cache call in Redis with 2-minute ringing TTL
         await setInRedis(`active_call:${callerId}`, callSession, 120);
         await setInRedis(`active_call:${receiverId}`, callSession, 120);
         if (receiverEmail) await setInRedis(`active_call:${receiverEmail}`, callSession, 120);
 
-        // Send incoming call signal to receiver across all associated socket rooms
-        const targets = [...new Set([receiverId, receiverEmail].filter(Boolean))];
-        targets.forEach((target) => {
+        // Resolve all possible target rooms for the receiver
+        const targetRooms = new Set();
+        if (receiverId) targetRooms.add(receiverId);
+        if (receiverEmail) {
+          targetRooms.add(receiverEmail);
+          targetRooms.add(receiverEmail.toLowerCase());
+        }
+
+        const resolvedReceiver = await resolveUserAndLawyerTargets(receiverId || receiverEmail);
+        resolvedReceiver.forEach((r) => targetRooms.add(r));
+
+        targetRooms.forEach((target) => {
           io.to(target).emit("incoming_call", {
             conversationId,
             callerId,
@@ -324,13 +398,14 @@ export const initSocket = (httpServer, corsOptions) => {
     // 2. Answer Incoming Call
     socket.on("answer_call", async (data) => {
       try {
-        const { callerId, callerEmail, receiverId, answer, callType } = data;
+        const { callerId, callerEmail, receiverId, receiverEmail, conversationId, answer, callType } = data;
 
-        // Update active call status in Redis to 'connected' with 2-hour TTL
         const connectedSession = {
           callerId,
           callerEmail,
           receiverId,
+          receiverEmail,
+          conversationId,
           callType,
           status: "connected",
           connectedAt: Date.now(),
@@ -338,13 +413,24 @@ export const initSocket = (httpServer, corsOptions) => {
         await setInRedis(`active_call:${callerId}`, connectedSession, 7200);
         await setInRedis(`active_call:${receiverId || userId}`, connectedSession, 7200);
 
-        // Notify caller across all caller socket rooms that call was accepted
-        const callerTargets = [...new Set([callerId, callerEmail].filter(Boolean))];
+        // Resolve all possible caller target rooms
+        const callerTargets = new Set();
+        if (callerId) callerTargets.add(callerId);
+        if (callerEmail) {
+          callerTargets.add(callerEmail);
+          callerTargets.add(callerEmail.toLowerCase());
+        }
+
+        const resolvedCaller = await resolveUserAndLawyerTargets(callerId || callerEmail);
+        resolvedCaller.forEach((c) => callerTargets.add(c));
+
         callerTargets.forEach((cId) => {
           io.to(cId).emit("call_accepted", {
             answer,
             callType,
             receiverId: receiverId || userId,
+            receiverEmail: receiverEmail || userEmail,
+            conversationId,
           });
         });
       } catch (ansErr) {
@@ -353,13 +439,23 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     // 3. ICE Candidate Exchange
-    socket.on("ice_candidate", ({ targetId, targetEmail, candidate }) => {
+    socket.on("ice_candidate", async ({ targetId, targetEmail, conversationId, candidate }) => {
       if (candidate) {
-        const candTargets = [...new Set([targetId, targetEmail].filter(Boolean))];
+        const candTargets = new Set();
+        if (targetId) candTargets.add(targetId);
+        if (targetEmail) {
+          candTargets.add(targetEmail);
+          candTargets.add(targetEmail.toLowerCase());
+        }
+
+        const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
+        resolved.forEach((t) => candTargets.add(t));
+
         candTargets.forEach((tId) => {
           io.to(tId).emit("ice_candidate", {
             candidate,
             senderId: userId,
+            conversationId,
           });
         });
       }
@@ -368,18 +464,26 @@ export const initSocket = (httpServer, corsOptions) => {
     // 4. End Call (Hang up)
     socket.on("end_call", async ({ targetId, targetEmail, conversationId }) => {
       try {
-        // Clean up from Redis
         if (userId) await deleteFromRedis(`active_call:${userId}`);
         if (targetId) await deleteFromRedis(`active_call:${targetId}`);
         if (targetEmail) await deleteFromRedis(`active_call:${targetEmail}`);
 
-        const endTargets = [...new Set([targetId, targetEmail].filter(Boolean))];
+        const endTargets = new Set();
+        if (targetId) endTargets.add(targetId);
+        if (targetEmail) {
+          endTargets.add(targetEmail);
+          endTargets.add(targetEmail.toLowerCase());
+        }
+
+        const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
+        resolved.forEach((t) => endTargets.add(t));
+
         endTargets.forEach((tId) => {
-          io.to(tId).emit("call_ended", { senderId: userId });
+          io.to(tId).emit("call_ended", { senderId: userId, conversationId });
         });
 
         if (conversationId) {
-          io.to(conversationId).emit("call_ended", { senderId: userId });
+          io.to(conversationId).emit("call_ended", { senderId: userId, conversationId });
         }
       } catch (endErr) {
         console.error("Error in end_call:", endErr);
@@ -387,17 +491,27 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     // 5. Reject Call (Decline)
-    socket.on("reject_call", async ({ callerId, callerEmail }) => {
+    socket.on("reject_call", async ({ callerId, callerEmail, conversationId }) => {
       try {
         if (userId) await deleteFromRedis(`active_call:${userId}`);
         if (callerId) await deleteFromRedis(`active_call:${callerId}`);
         if (callerEmail) await deleteFromRedis(`active_call:${callerEmail}`);
 
-        const rejTargets = [...new Set([callerId, callerEmail].filter(Boolean))];
+        const rejTargets = new Set();
+        if (callerId) rejTargets.add(callerId);
+        if (callerEmail) {
+          rejTargets.add(callerEmail);
+          rejTargets.add(callerEmail.toLowerCase());
+        }
+
+        const resolved = await resolveUserAndLawyerTargets(callerId || callerEmail);
+        resolved.forEach((t) => rejTargets.add(t));
+
         rejTargets.forEach((cId) => {
           io.to(cId).emit("call_rejected", {
             receiverId: userId,
             msg: "Call declined",
+            conversationId,
           });
         });
       } catch (rejErr) {
@@ -406,14 +520,24 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     // 6. Media Toggle Sync (Mute / Camera Toggle)
-    socket.on("toggle_media", ({ targetId, type, enabled }) => {
-      if (targetId) {
-        io.to(targetId).emit("peer_media_toggle", {
+    socket.on("toggle_media", async ({ targetId, targetEmail, type, enabled }) => {
+      const toggleTargets = new Set();
+      if (targetId) toggleTargets.add(targetId);
+      if (targetEmail) {
+        toggleTargets.add(targetEmail);
+        toggleTargets.add(targetEmail.toLowerCase());
+      }
+
+      const resolved = await resolveUserAndLawyerTargets(targetId || targetEmail);
+      resolved.forEach((t) => toggleTargets.add(t));
+
+      toggleTargets.forEach((tId) => {
+        io.to(tId).emit("peer_media_toggle", {
           senderId: userId,
           type,
           enabled,
         });
-      }
+      });
     });
 
     // Disconnect Handler
@@ -421,7 +545,6 @@ export const initSocket = (httpServer, corsOptions) => {
       for (const id of userIdentifiers) {
         try {
           await removeFromRedisSet("online_users", id);
-          // Check and clean any active calls in Redis
           const activeCall = await getFromRedis(`active_call:${id}`);
           if (activeCall) {
             const peerId = activeCall.callerId === id ? activeCall.receiverId : activeCall.callerId;
@@ -453,3 +576,4 @@ export const getIO = () => {
   }
   return io;
 };
+

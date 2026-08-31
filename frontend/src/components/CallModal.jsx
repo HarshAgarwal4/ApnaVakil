@@ -26,6 +26,7 @@ const ICE_SERVERS = {
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
     { urls: "stun:global.stun.twilio.com:3478" },
+    { urls: "stun:stun.cloudflare.com:3478" },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -142,6 +143,7 @@ export default function CallModal({
     callState?.type === "incoming" ? callState.caller : callState?.receiver;
   const targetId = otherParty?.id || otherParty?._id || otherParty?.email;
   const targetEmail = otherParty?.email || "";
+  const conversationId = callState?.conversationId || "";
 
   // Reactive binding for remote stream
   useEffect(() => {
@@ -269,24 +271,45 @@ export default function CallModal({
   // Helper to attach track listener
   const setupPeerListeners = (pc) => {
     pc.ontrack = (event) => {
-      console.log("🎥 [WebRTC] ontrack received:", event);
-      const [remoteMediaStream] = event.streams;
-      if (remoteMediaStream) {
-        remoteStreamRef.current = remoteMediaStream;
-        setRemoteStream(remoteMediaStream);
-      } else if (event.track) {
-        const newStream = remoteStreamRef.current || new MediaStream();
-        newStream.addTrack(event.track);
-        remoteStreamRef.current = newStream;
-        setRemoteStream(newStream);
+      console.log("🎥 [WebRTC] ontrack received:", event.track?.kind, event);
+      let stream = event.streams && event.streams[0];
+      if (!stream) {
+        stream = remoteStreamRef.current || new MediaStream();
+        if (event.track) {
+          stream.addTrack(event.track);
+        }
       }
+      remoteStreamRef.current = stream;
+      setRemoteStream(stream);
+
+      // Direct assignment to DOM elements for zero-delay playback
+      if (remoteVideoRef.current && isVideo) {
+        remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play().catch((e) => console.log("Remote video play catch:", e));
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = stream;
+        remoteAudioRef.current.play().catch((e) => console.log("Remote audio play catch:", e));
+      }
+
+      stream.onaddtrack = () => {
+        if (remoteVideoRef.current && isVideo) {
+          remoteVideoRef.current.srcObject = stream;
+          remoteVideoRef.current.play().catch(() => {});
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = stream;
+          remoteAudioRef.current.play().catch(() => {});
+        }
+      };
     };
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && targetId) {
+      if (event.candidate && (targetId || targetEmail)) {
         socket.emit("ice_candidate", {
           targetId,
           targetEmail,
+          conversationId,
           candidate: event.candidate,
         });
       }
@@ -343,7 +366,7 @@ export default function CallModal({
       socket.emit(
         "call_user",
         {
-          conversationId: callState.conversationId,
+          conversationId,
           callerId: currentUserId,
           callerEmail: currentUserEmail,
           callerName: currentUserName,
@@ -387,7 +410,9 @@ export default function CallModal({
             const cand = iceCandidatesQueueRef.current.shift();
             try {
               await pc.addIceCandidate(new RTCIceCandidate(cand));
-            } catch (e) {}
+            } catch (e) {
+              console.error("Error adding queued ICE candidate:", e);
+            }
           }
 
           setIsConnected(true);
@@ -441,7 +466,7 @@ export default function CallModal({
       socket.off("call_rejected");
       socket.off("peer_media_toggle");
     };
-  }, [socket, targetId]);
+  }, [socket, targetId, targetEmail]);
 
   // 4. Answer Incoming Call (Receiver Flow)
   const handleAnswerCall = async () => {
@@ -467,18 +492,20 @@ export default function CallModal({
       peerConnectionRef.current = pc;
       setupPeerListeners(pc);
 
-      // Add local media tracks
+      // Add local media tracks FIRST
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       // Set Remote Offer
       await pc.setRemoteDescription(new RTCSessionDescription(callState.offer));
 
-      // Flush Queued ICE Candidates
+      // Flush Queued ICE Candidates AFTER setting remote description
       while (iceCandidatesQueueRef.current.length > 0) {
         const cand = iceCandidatesQueueRef.current.shift();
         try {
           await pc.addIceCandidate(new RTCIceCandidate(cand));
-        } catch (e) {}
+        } catch (e) {
+          console.error("Error adding queued ICE candidate on answer:", e);
+        }
       }
 
       // Create Answer
@@ -492,6 +519,8 @@ export default function CallModal({
         callerId: callState.caller?.id,
         callerEmail: callState.caller?.email || "",
         receiverId: currentUserId,
+        receiverEmail: currentUserEmail,
+        conversationId,
         answer,
         callType: callState.callType,
       });
@@ -510,6 +539,7 @@ export default function CallModal({
     socket.emit("reject_call", {
       callerId: callState.caller?.id,
       callerEmail: callState.caller?.email || "",
+      conversationId,
     });
     cleanup();
     onClose();
@@ -520,7 +550,7 @@ export default function CallModal({
     socket.emit("end_call", {
       targetId,
       targetEmail,
-      conversationId: callState?.conversationId,
+      conversationId,
     });
     cleanup();
     onClose();
@@ -536,6 +566,7 @@ export default function CallModal({
         setIsMuted(!audioTrack.enabled);
         socket.emit("toggle_media", {
           targetId,
+          targetEmail,
           type: "audio",
           enabled: audioTrack.enabled,
         });
@@ -553,6 +584,7 @@ export default function CallModal({
         setIsVideoOff(!videoTrack.enabled);
         socket.emit("toggle_media", {
           targetId,
+          targetEmail,
           type: "video",
           enabled: videoTrack.enabled,
         });

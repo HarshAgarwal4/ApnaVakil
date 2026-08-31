@@ -292,7 +292,7 @@ export default function WhatsAppChat({
   useEffect(() => {
     if (!activeConv?.conversationId) return;
 
-    const socket = getSocket(currentUserId, currentRole);
+    const socket = getSocket(currentUserId, currentRole, currentUserEmail);
     socket.emit("join_conversation", { conversationId: activeConv.conversationId });
 
     // Mark unread messages as read (triggers Double Blue Ticks)
@@ -334,7 +334,7 @@ export default function WhatsAppChat({
     setInputMessage(e.target.value);
     if (!activeConv) return;
 
-    const socket = getSocket(currentUserId, currentRole);
+    const socket = getSocket(currentUserId, currentRole, currentUserEmail);
     if (!isTyping) {
       setIsTyping(true);
       socket.emit("typing", {
@@ -403,7 +403,7 @@ export default function WhatsAppChat({
     );
 
     // 2. Transmit via Socket if connected, otherwise fallback to HTTP
-    const socket = getSocket(currentUserId, currentRole);
+    const socket = getSocket(currentUserId, currentRole, currentUserEmail);
     if (socket && socket.connected) {
       socket.emit("send_message", payload, (response) => {
         if (response?.status === 1 && response.message) {
