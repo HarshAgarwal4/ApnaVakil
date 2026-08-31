@@ -36,7 +36,7 @@ export default function WhatsAppChat({
   onClose = null,
   preselectedConvId = null,
 }) {
-  const { theme, user } = useStore();
+  const { theme, user, setActiveCall } = useStore();
   const isDark = theme === "dark";
 
   const [conversations, setConversations] = useState([]);
@@ -49,7 +49,6 @@ export default function WhatsAppChat({
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [selectedFileAttachment, setSelectedFileAttachment] = useState(null);
   const [previewImageModal, setPreviewImageModal] = useState(null);
-  const [activeCallSession, setActiveCallSession] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
 
@@ -251,22 +250,6 @@ export default function WhatsAppChat({
       });
     });
 
-    // Incoming WebRTC Video / Audio Call Handler
-    socket.on("incoming_call", (callData) => {
-      setActiveCallSession({
-        type: "incoming",
-        callType: callData.callType,
-        conversationId: callData.conversationId,
-        caller: {
-          id: callData.callerId,
-          name: callData.callerName,
-          avatar: callData.callerAvatar,
-          role: callData.callerRole,
-        },
-        offer: callData.offer,
-      });
-    });
-
     return () => {
       socket.off("receive_message");
       socket.off("user_typing");
@@ -274,7 +257,6 @@ export default function WhatsAppChat({
       socket.off("messages_read_update");
       socket.off("messages_delivered_update");
       socket.off("user_status_change");
-      socket.off("incoming_call");
     };
   }, [currentUserId, currentRole, activeConv]);
 
@@ -803,7 +785,7 @@ export default function WhatsAppChat({
                 <button
                   type="button"
                   onClick={() =>
-                    setActiveCallSession({
+                    setActiveCall({
                       type: "outgoing",
                       callType: "audio",
                       conversationId: activeConv.conversationId,
@@ -821,7 +803,7 @@ export default function WhatsAppChat({
                 <button
                   type="button"
                   onClick={() =>
-                    setActiveCallSession({
+                    setActiveCall({
                       type: "outgoing",
                       callType: "video",
                       conversationId: activeConv.conversationId,
@@ -1103,18 +1085,6 @@ export default function WhatsAppChat({
             </div>
           </div>
         </div>
-      )}
-
-      {/* WebRTC Video & Audio Calling Modal (Redis & Socket Powered) */}
-      {activeCallSession && (
-        <CallModal
-          callState={activeCallSession}
-          currentUserId={currentUserId}
-          currentUserEmail={currentUserEmail}
-          currentUserName={user?.name || (currentRole === "lawyer" ? "Advocate" : "Client")}
-          currentUserRole={currentRole}
-          onClose={() => setActiveCallSession(null)}
-        />
       )}
     </div>
   );

@@ -125,6 +125,8 @@ export default function CallModal({
   const [peerMediaState, setPeerMediaState] = useState({ audio: true, video: true });
   const [isConnected, setIsConnected] = useState(false);
 
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
@@ -141,13 +143,117 @@ export default function CallModal({
   const targetId = otherParty?.id || otherParty?._id || otherParty?.email;
   const targetEmail = otherParty?.email || "";
 
+  // Reactive binding for remote stream
+  useEffect(() => {
+    if (remoteStream) {
+      remoteStreamRef.current = remoteStream;
+      if (remoteVideoRef.current && isVideo) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.play().catch(() => {});
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        remoteAudioRef.current.play().catch(() => {});
+      }
+    }
+  }, [remoteStream, isVideo]);
+
+  // Reactive binding for local stream
+  useEffect(() => {
+    if (localStream && localVideoRef.current && isVideo && !isScreenSharing) {
+      localStreamRef.current = localStream;
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, isVideo, isScreenSharing]);
+
+  // Complete hardware cleanup function
+  const cleanup = () => {
+    soundFx.stop();
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // Stop all local camera and microphone hardware tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+          track.enabled = false;
+        } catch (e) {}
+      });
+      localStreamRef.current = null;
+    }
+
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+          track.enabled = false;
+        } catch (e) {}
+      });
+    }
+
+    // Stop remote stream tracks
+    if (remoteStreamRef.current) {
+      remoteStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {}
+      });
+      remoteStreamRef.current = null;
+    }
+
+    // Stop screen share track
+    if (screenTrackRef.current) {
+      try {
+        screenTrackRef.current.stop();
+        screenTrackRef.current.enabled = false;
+      } catch (e) {}
+      screenTrackRef.current = null;
+    }
+
+    // Detach video elements to release hardware lights
+    if (localVideoRef.current) {
+      try {
+        localVideoRef.current.pause();
+        localVideoRef.current.srcObject = null;
+      } catch (e) {}
+    }
+    if (remoteVideoRef.current) {
+      try {
+        remoteVideoRef.current.pause();
+        remoteVideoRef.current.srcObject = null;
+      } catch (e) {}
+    }
+    if (remoteAudioRef.current) {
+      try {
+        remoteAudioRef.current.pause();
+        remoteAudioRef.current.srcObject = null;
+      } catch (e) {}
+    }
+
+    // Close WebRTC PeerConnection
+    if (peerConnectionRef.current) {
+      try {
+        peerConnectionRef.current.ontrack = null;
+        peerConnectionRef.current.onicecandidate = null;
+        peerConnectionRef.current.onconnectionstatechange = null;
+        peerConnectionRef.current.close();
+      } catch (e) {}
+      peerConnectionRef.current = null;
+    }
+  };
+
   // 1. Initialize Outgoing Call or Setup Incoming Ringing
   useEffect(() => {
     let active = true;
 
     if (callState?.type === "incoming") {
       soundFx.playIncomingRingtone();
-      setCallStatusText("Incoming Video Consultation...");
+      setCallStatusText(isVideo ? "Incoming Video Consultation..." : "Incoming Voice Consultation...");
     } else if (callState?.type === "outgoing") {
       soundFx.playOutgoingTone();
       setCallStatusText("Calling & Ringing...");
@@ -156,7 +262,6 @@ export default function CallModal({
 
     return () => {
       active = false;
-      soundFx.stop();
       cleanup();
     };
   }, []);
@@ -170,6 +275,7 @@ export default function CallModal({
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStreamRef.current = stream;
       setLocalStream(stream);
 
       if (localVideoRef.current && isVideo) {
@@ -186,14 +292,9 @@ export default function CallModal({
       // Handle Remote Media Stream
       pc.ontrack = (event) => {
         const [remoteMediaStream] = event.streams;
-        setRemoteStream(remoteMediaStream);
-        if (remoteVideoRef.current && isVideo) {
-          remoteVideoRef.current.srcObject = remoteMediaStream;
-          remoteVideoRef.current.play().catch(() => {});
-        }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = remoteMediaStream;
-          remoteAudioRef.current.play().catch(() => {});
+        if (remoteMediaStream) {
+          remoteStreamRef.current = remoteMediaStream;
+          setRemoteStream(remoteMediaStream);
         }
       };
 
@@ -219,7 +320,6 @@ export default function CallModal({
           pc.connectionState === "failed" ||
           pc.connectionState === "closed"
         ) {
-          soundFx.stop();
           handleEndCall();
         }
       };
@@ -247,17 +347,17 @@ export default function CallModal({
         },
         (res) => {
           if (res?.status === 0) {
-            soundFx.stop();
+            cleanup();
             setCallStatusText(res.msg || "User Unavailable");
-            setTimeout(handleEndCall, 2500);
+            setTimeout(onClose, 2000);
           }
         }
       );
     } catch (err) {
       console.error("WebRTC getUserMedia Init error:", err);
-      soundFx.stop();
+      cleanup();
       setCallStatusText("Please allow Microphone and Camera permissions in your browser.");
-      setTimeout(handleEndCall, 3500);
+      setTimeout(onClose, 3000);
     }
   };
 
@@ -304,18 +404,18 @@ export default function CallModal({
       }
     });
 
-    // Peer Hangs Up
+    // Remote Peer Hangs Up
     socket.on("call_ended", () => {
-      soundFx.stop();
+      cleanup();
       setCallStatusText("Call Ended");
-      setTimeout(onClose, 1000);
+      setTimeout(onClose, 600);
     });
 
-    // Peer Declines Call
+    // Remote Peer Declines Call
     socket.on("call_rejected", ({ msg }) => {
-      soundFx.stop();
+      cleanup();
       setCallStatusText(msg || "Call Declined");
-      setTimeout(onClose, 2000);
+      setTimeout(onClose, 1200);
     });
 
     // Remote Peer Toggles Mic / Camera
@@ -344,6 +444,7 @@ export default function CallModal({
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStreamRef.current = stream;
       setLocalStream(stream);
 
       if (localVideoRef.current && isVideo) {
@@ -360,14 +461,9 @@ export default function CallModal({
       // Handle remote media track
       pc.ontrack = (event) => {
         const [remoteMediaStream] = event.streams;
-        setRemoteStream(remoteMediaStream);
-        if (remoteVideoRef.current && isVideo) {
-          remoteVideoRef.current.srcObject = remoteMediaStream;
-          remoteVideoRef.current.play().catch(() => {});
-        }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = remoteMediaStream;
-          remoteAudioRef.current.play().catch(() => {});
+        if (remoteMediaStream) {
+          remoteStreamRef.current = remoteMediaStream;
+          setRemoteStream(remoteMediaStream);
         }
       };
 
@@ -428,7 +524,6 @@ export default function CallModal({
 
   // Decline Incoming Call
   const handleRejectCall = () => {
-    soundFx.stop();
     socket.emit("reject_call", {
       callerId: callState.caller?.id,
       callerEmail: callState.caller?.email || "",
@@ -439,7 +534,6 @@ export default function CallModal({
 
   // End Active Call
   const handleEndCall = () => {
-    soundFx.stop();
     socket.emit("end_call", {
       targetId,
       targetEmail,
@@ -451,8 +545,9 @@ export default function CallModal({
 
   // Toggle Microphone Mute
   const handleToggleMute = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
+    const activeStream = localStreamRef.current || localStream;
+    if (activeStream) {
+      const audioTrack = activeStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
@@ -467,8 +562,9 @@ export default function CallModal({
 
   // Toggle Video Camera
   const handleToggleVideo = () => {
-    if (localStream && isVideo) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    const activeStream = localStreamRef.current || localStream;
+    if (activeStream && isVideo) {
+      const videoTrack = activeStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoOff(!videoTrack.enabled);
@@ -518,15 +614,18 @@ export default function CallModal({
   const handleStopScreenShare = () => {
     const pc = peerConnectionRef.current;
     if (screenTrackRef.current) {
-      screenTrackRef.current.stop();
+      try {
+        screenTrackRef.current.stop();
+      } catch (e) {}
       screenTrackRef.current = null;
     }
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    const activeStream = localStreamRef.current || localStream;
+    if (activeStream) {
+      const videoTrack = activeStream.getVideoTracks()[0];
       const sender = pc?.getSenders().find((s) => s.track && s.track.kind === "video");
       if (sender && videoTrack) sender.replaceTrack(videoTrack);
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.srcObject = activeStream;
         localVideoRef.current.play().catch(() => {});
       }
     }
@@ -538,18 +637,6 @@ export default function CallModal({
     timerRef.current = setInterval(() => {
       setCallDuration((prev) => prev + 1);
     }, 1000);
-  };
-
-  const cleanup = () => {
-    soundFx.stop();
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (localStream) localStream.getTracks().forEach((t) => t.stop());
-    if (screenTrackRef.current) screenTrackRef.current.stop();
-    if (peerConnectionRef.current) {
-      try {
-        peerConnectionRef.current.close();
-      } catch (e) {}
-    }
   };
 
   const formatTime = (seconds) => {

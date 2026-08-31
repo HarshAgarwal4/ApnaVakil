@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useStore } from "../zustand/store";
 import { getSocket } from "../services/socket";
 import CallModal from "./CallModal";
 
 export default function GlobalCallManager() {
-  const { user } = useStore();
-  const [incomingCallSession, setIncomingCallSession] = useState(null);
+  const { user, activeCall, setActiveCall } = useStore();
 
   const currentUserId = user?._id?.toString() || user?.id?.toString() || user?.email;
   const currentUserEmail = user?.email || "";
@@ -20,7 +19,7 @@ export default function GlobalCallManager() {
     // Global Incoming Call Listener
     const handleIncomingCall = (callData) => {
       console.log("🔔 Global Incoming Call Received:", callData);
-      setIncomingCallSession({
+      setActiveCall({
         type: "incoming",
         callType: callData.callType || "video",
         conversationId: callData.conversationId,
@@ -42,16 +41,16 @@ export default function GlobalCallManager() {
     };
   }, [currentUserId, currentUserEmail, currentRole]);
 
-  if (!incomingCallSession) return null;
+  if (!activeCall) return null;
 
   return (
     <CallModal
-      callState={incomingCallSession}
+      callState={activeCall}
       currentUserId={currentUserId}
       currentUserEmail={currentUserEmail}
       currentUserName={user?.name || (currentRole === "lawyer" ? "Advocate" : "Client")}
       currentUserRole={currentRole}
-      onClose={() => setIncomingCallSession(null)}
+      onClose={() => setActiveCall(null)}
     />
   );
 }

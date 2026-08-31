@@ -35,6 +35,8 @@ export const useStore = create((set, get) => ({
     lawyers: []
   },
   rightSideBarOpen: false,
+  activeCall: null,
+  setActiveCall: (activeCall) => set({ activeCall }),
   theme: typeof window !== "undefined" ? (localStorage.getItem("apnaVakil_theme") || "dark") : "dark",
   setTheme: (theme) => {
     if (typeof window !== "undefined") {

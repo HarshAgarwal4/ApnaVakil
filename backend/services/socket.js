@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import { MessageModel } from "../App/Users/models/Message.js";
+import lawyerModel from "../App/Admin/models/lawyers.js";
 import {
   addToRedisSet,
   removeFromRedisSet,
@@ -29,8 +30,26 @@ export const initSocket = (httpServer, corsOptions) => {
 
     const userIdentifiers = [userId, userEmail].filter(Boolean);
 
+    // If connected party is a lawyer or has lawyer profile, also join lawyer profile ID
+    if (userEmail || userId) {
+      try {
+        const queryOr = [];
+        if (userEmail) queryOr.push({ email: userEmail });
+        if (userId && userId.match(/^[0-9a-fA-F]{24}$/)) queryOr.push({ userId: userId });
+
+        if (queryOr.length > 0) {
+          const matchedLawyer = await lawyerModel.findOne({ $or: queryOr }).lean();
+          if (matchedLawyer && matchedLawyer._id) {
+            userIdentifiers.push(matchedLawyer._id.toString());
+          }
+        }
+      } catch (err) {
+        console.log("Lawyer profile lookup error on socket connect:", err);
+      }
+    }
+
     if (userIdentifiers.length > 0) {
-      for (const id of userIdentifiers) {
+      for (const id of [...new Set(userIdentifiers)]) {
         socket.join(id);
         try {
           await addToRedisSet("online_users", id);
