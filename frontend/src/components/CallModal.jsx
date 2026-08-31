@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { getSocket } from "../services/socket";
 
-// High-Availability Multi-Provider STUN Servers
+// High-Availability Public STUN Servers
 const ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
@@ -30,7 +30,7 @@ const ICE_SERVERS = {
   iceCandidatePoolSize: 10,
 };
 
-// Web Audio API Ringtone / Dial Tone Engine
+// Web Audio API Ringtone Engine
 class SoundFx {
   constructor() {
     this.ctx = null;
@@ -108,7 +108,7 @@ class SoundFx {
 const soundFx = new SoundFx();
 
 export default function CallModal({
-  callState, // { type: 'incoming' | 'outgoing' | 'connected', callType: 'video' | 'audio', caller, receiver, offer, conversationId }
+  callState, // { type: 'incoming' | 'outgoing', callType: 'video' | 'audio', caller, receiver, offer, conversationId }
   currentUserId,
   currentUserEmail = "",
   currentUserName,
@@ -176,7 +176,7 @@ export default function CallModal({
       timerRef.current = null;
     }
 
-    // Stop all local camera and microphone hardware tracks
+    // Stop all local camera and microphone tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         try {
@@ -266,7 +266,50 @@ export default function CallModal({
     };
   }, []);
 
-  // 2. Outgoing Call WebRTC Setup
+  // Helper to attach track listener
+  const setupPeerListeners = (pc) => {
+    pc.ontrack = (event) => {
+      console.log("🎥 [WebRTC] ontrack received:", event);
+      const [remoteMediaStream] = event.streams;
+      if (remoteMediaStream) {
+        remoteStreamRef.current = remoteMediaStream;
+        setRemoteStream(remoteMediaStream);
+      } else if (event.track) {
+        const newStream = remoteStreamRef.current || new MediaStream();
+        newStream.addTrack(event.track);
+        remoteStreamRef.current = newStream;
+        setRemoteStream(newStream);
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && targetId) {
+        socket.emit("ice_candidate", {
+          targetId,
+          targetEmail,
+          candidate: event.candidate,
+        });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log("⚡ [WebRTC] Connection state:", pc.connectionState);
+      if (pc.connectionState === "connected") {
+        soundFx.stop();
+        setIsConnected(true);
+        setCallStatusText("Connected • End-to-End Privileged");
+        startTimer();
+      } else if (
+        pc.connectionState === "disconnected" ||
+        pc.connectionState === "failed" ||
+        pc.connectionState === "closed"
+      ) {
+        handleEndCall();
+      }
+    };
+  };
+
+  // 2. Outgoing Call WebRTC Setup (Caller)
   const startOutgoingCall = async () => {
     try {
       const constraints = {
@@ -285,44 +328,10 @@ export default function CallModal({
 
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnectionRef.current = pc;
+      setupPeerListeners(pc);
 
       // Add local media tracks to PeerConnection
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      // Handle Remote Media Stream
-      pc.ontrack = (event) => {
-        const [remoteMediaStream] = event.streams;
-        if (remoteMediaStream) {
-          remoteStreamRef.current = remoteMediaStream;
-          setRemoteStream(remoteMediaStream);
-        }
-      };
-
-      // Handle ICE Candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && targetId) {
-          socket.emit("ice_candidate", {
-            targetId,
-            targetEmail,
-            candidate: event.candidate,
-          });
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") {
-          soundFx.stop();
-          setIsConnected(true);
-          setCallStatusText("Connected • End-to-End Privileged");
-          startTimer();
-        } else if (
-          pc.connectionState === "disconnected" ||
-          pc.connectionState === "failed" ||
-          pc.connectionState === "closed"
-        ) {
-          handleEndCall();
-        }
-      };
 
       // Create SDP Offer
       const offer = await pc.createOffer({
@@ -376,7 +385,9 @@ export default function CallModal({
           // Process any queued ICE candidates
           while (iceCandidatesQueueRef.current.length > 0) {
             const cand = iceCandidatesQueueRef.current.shift();
-            await pc.addIceCandidate(new RTCIceCandidate(cand));
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            } catch (e) {}
           }
 
           setIsConnected(true);
@@ -391,13 +402,13 @@ export default function CallModal({
     // Remote ICE Candidate Received
     socket.on("ice_candidate", async ({ candidate }) => {
       try {
+        if (!candidate) return;
         const pc = peerConnectionRef.current;
-        if (pc && candidate) {
-          if (pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          } else {
-            iceCandidatesQueueRef.current.push(candidate);
-          }
+        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } else {
+          // Buffer candidate until remote description is set
+          iceCandidatesQueueRef.current.push(candidate);
         }
       } catch (err) {
         console.error("Error adding ICE candidate:", err);
@@ -454,43 +465,10 @@ export default function CallModal({
 
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnectionRef.current = pc;
+      setupPeerListeners(pc);
 
       // Add local media tracks
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-      // Handle remote media track
-      pc.ontrack = (event) => {
-        const [remoteMediaStream] = event.streams;
-        if (remoteMediaStream) {
-          remoteStreamRef.current = remoteMediaStream;
-          setRemoteStream(remoteMediaStream);
-        }
-      };
-
-      // Handle ICE Candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && targetId) {
-          socket.emit("ice_candidate", {
-            targetId,
-            targetEmail,
-            candidate: event.candidate,
-          });
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "connected") {
-          setIsConnected(true);
-          setCallStatusText("Connected • End-to-End Privileged");
-          startTimer();
-        } else if (
-          pc.connectionState === "disconnected" ||
-          pc.connectionState === "failed" ||
-          pc.connectionState === "closed"
-        ) {
-          handleEndCall();
-        }
-      };
 
       // Set Remote Offer
       await pc.setRemoteDescription(new RTCSessionDescription(callState.offer));
@@ -498,11 +476,16 @@ export default function CallModal({
       // Flush Queued ICE Candidates
       while (iceCandidatesQueueRef.current.length > 0) {
         const cand = iceCandidatesQueueRef.current.shift();
-        await pc.addIceCandidate(new RTCIceCandidate(cand));
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (e) {}
       }
 
       // Create Answer
-      const answer = await pc.createAnswer();
+      const answer = await pc.createAnswer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: isVideo,
+      });
       await pc.setLocalDescription(answer);
 
       socket.emit("answer_call", {
@@ -696,7 +679,7 @@ export default function CallModal({
               />
 
               {/* Placeholder when remote camera is off or not connected yet */}
-              {(!remoteStream || !peerMediaState.video || isIncomingRinging) && (
+              {(!remoteStream || isIncomingRinging) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#111b21]/95 z-10 space-y-4">
                   <div className="relative">
                     {isIncomingRinging && (
@@ -714,7 +697,7 @@ export default function CallModal({
                   <div className="text-center space-y-1">
                     <h4 className="text-white font-bold text-xl">{otherParty?.name}</h4>
                     <p className="text-emerald-400 font-semibold text-sm">
-                      {callDuration > 0 ? "Camera is turned off" : callStatusText}
+                      {callDuration > 0 ? "Waiting for video..." : callStatusText}
                     </p>
                     <p className="text-slate-400 text-xs">
                       Direct WebRTC Peer-to-Peer Encrypted Video
